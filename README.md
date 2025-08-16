@@ -110,8 +110,8 @@ Requirements:
 - Gradle (wrapper included)
 
 ```bash
-git clone https://github.com/wolftailvale/waypoints.git
-cd waypoints
+git clone https://github.com/wolftailvale/holocons-waypoints-whispcraft.git
+cd holocons-waypoints-whispcraft
 ./gradlew clean build
 ```
 

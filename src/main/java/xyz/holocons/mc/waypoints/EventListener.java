@@ -10,6 +10,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.ProjectileLaunchEvent;
 import org.bukkit.event.inventory.InventoryAction;
@@ -77,6 +78,40 @@ public final class EventListener implements Listener {
             }
         }
         travelerMap.unregisterTask(player);
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onBlockBreak(BlockBreakEvent event) {
+        final var block = event.getBlock();
+        
+        // Check if this block is a waypoint banner
+        if (!waypointMap.isWaypoint(block)) {
+            return;
+        }
+        
+        final var player = event.getPlayer();
+        final var waypoint = waypointMap.getNearbyWaypoint(block);
+        
+        // Only allow staff to break waypoint banners
+        if (!player.hasPermission("waypoints.staff")) {
+            event.setCancelled(true);
+            player.sendMessage(Component.text("You cannot break waypoint banners! Use /editwaypoints delete to remove waypoints.", NamedTextColor.RED));
+            return;
+        }
+        
+        // If staff breaks a waypoint banner, remove the waypoint data
+        waypointMap.removeWaypoint(waypoint);
+        travelerMap.removeWaypoint(waypoint);
+        
+        // Refund tokens to contributors
+        final var maxTokens = plugin.getMaxTokens();
+        for (final var uniqueId : waypoint.getContributors()) {
+            final var traveler = travelerMap.getOrCreateTraveler(uniqueId);
+            traveler.setTokens(Math.min(traveler.getTokens() + 1, maxTokens));
+        }
+        
+        hologramMap.remove(waypoint);
+        player.sendMessage(Component.text("Waypoint removed and tokens refunded to contributors.", NamedTextColor.GREEN));
     }
 
     private boolean isValidWaypointPlacement(Block blockPlaced, Block blockAgainst) {
