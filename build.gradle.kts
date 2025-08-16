@@ -3,22 +3,43 @@ plugins {
 }
 
 group = "xyz.holocons.mc"
-version = "1.0-SNAPSHOT"
+version = "1.21.8_update"
 description = "Banner waypoints for HoloCons"
 
 java {
-    // Configure the java toolchain. This allows gradle to auto-provision JDK 17 on systems that only have JDK 8 installed for example.
-    toolchain.languageVersion.set(JavaLanguageVersion.of(17))
+    // Paper 1.21+ requires Java 21
+    toolchain.languageVersion.set(JavaLanguageVersion.of(21))
 }
 
 repositories {
     maven("https://repo.papermc.io/repository/maven-public/")
-    maven("https://repo.dmulloy2.net/repository/public/")
+    // dmulloy2 Nexus repos for ProtocolLib
+    maven("https://repo.dmulloy2.net/nexus/repository/public/")
+    maven("https://repo.dmulloy2.net/nexus/repository/releases/")
+    maven("https://repo.dmulloy2.net/nexus/repository/snapshots/")
+    // CodeMC often mirrors ProtocolLib releases
+    maven("https://repo.codemc.io/repository/maven-public/")
+    // Maven Central as general fallback
+    mavenCentral()
 }
 
 dependencies {
-    compileOnly("io.papermc.paper:paper-api:1.19.3-R0.1-SNAPSHOT")
-    compileOnly("com.comphenix.protocol:ProtocolLib:5.0.0-SNAPSHOT")
+    // Update to Paper 1.21.x API (adjust patch version if needed, e.g. 1.21.2). 1.21.8 placeholder target.
+    compileOnly("io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT")
+
+    // Local fallback for ProtocolLib: place the desired jar at libs/ProtocolLib.jar
+    val protocolLibPaths = listOf(
+        rootProject.file("libs/ProtocolLib.jar"),
+        rootProject.file("ProtocolLib.jar")
+    )
+    val protocolLibLocal = protocolLibPaths.firstOrNull { it.exists() }
+    if (protocolLibLocal != null) {
+        println("[build.gradle.kts] Using local ProtocolLib.jar at ${'$'}{protocolLibLocal.relativeTo(rootProject.projectDir)}")
+        compileOnly(files(protocolLibLocal))
+    } else {
+        // Remote dependency (version may need adjustment to one present in the repo you target)
+        compileOnly("com.comphenix.protocol:ProtocolLib:5.0.0")
+    }
 }
 
 tasks {
@@ -27,7 +48,7 @@ tasks {
 
         // Set the release flag. This configures what version bytecode the compiler will emit, as well as what JDK APIs are usable.
         // See https://openjdk.java.net/jeps/247 for more information.
-        options.release.set(17)
+    options.release.set(21)
     }
     javadoc {
         options.encoding = Charsets.UTF_8.name() // We want UTF-8 for everything
@@ -40,7 +61,8 @@ tasks {
             "name" to project.name,
             "version" to project.version,
             "description" to project.description,
-            "apiVersion" to "1.19",
+            // Target newer Minecraft API version
+            "apiVersion" to "1.21",
             "authors" to listOf("dlee13"),
             "website" to "holocons.xyz",
             "depend" to listOf("ProtocolLib"),

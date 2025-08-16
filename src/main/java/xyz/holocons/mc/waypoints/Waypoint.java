@@ -32,9 +32,16 @@ public class Waypoint {
         MISSING_BANNER_ITEMSTACK = new ItemStack(Material.WHITE_BANNER);
         var bannerMeta = (BannerMeta) MISSING_BANNER_ITEMSTACK.getItemMeta();
         bannerMeta.addPattern(new Pattern(DyeColor.BLACK, PatternType.STRIPE_TOP));
-        bannerMeta.addPattern(new Pattern(DyeColor.WHITE, PatternType.RHOMBUS_MIDDLE));
+        // RHOMBUS_MIDDLE was renamed in newer versions (e.g., LOZENGE / DIAMOND).
+        // Resolve dynamically.
+        var rhombus = resolvePatternType("RHOMBUS_MIDDLE", "LOZENGE", "DIAMOND");
+        bannerMeta.addPattern(new Pattern(DyeColor.WHITE, rhombus));
         bannerMeta.addPattern(new Pattern(DyeColor.BLACK, PatternType.STRIPE_DOWNLEFT));
-        bannerMeta.addPattern(new Pattern(DyeColor.WHITE, PatternType.HALF_HORIZONTAL_MIRROR));
+        // HALF_HORIZONTAL_MIRROR may be renamed (e.g., HALF_HORIZONTAL /
+        // HALF_HORIZONTAL_TOP)
+        var halfHorizontalMirror = resolvePatternType("HALF_HORIZONTAL_MIRROR", "HALF_HORIZONTAL_TOP",
+                "HALF_HORIZONTAL");
+        bannerMeta.addPattern(new Pattern(DyeColor.WHITE, halfHorizontalMirror));
         bannerMeta.addPattern(new Pattern(DyeColor.BLACK, PatternType.TRIANGLE_BOTTOM));
         bannerMeta.addPattern(new Pattern(DyeColor.WHITE, PatternType.STRIPE_MIDDLE));
         bannerMeta.addPattern(new Pattern(DyeColor.WHITE, PatternType.STRIPE_BOTTOM));
@@ -42,6 +49,16 @@ public class Waypoint {
         bannerMeta.addItemFlags(ItemFlag.HIDE_ENCHANTS, ItemFlag.HIDE_ITEM_SPECIFICS);
         bannerMeta.displayName(UNNAMED_WAYPOINT_COMPONENT);
         MISSING_BANNER_ITEMSTACK.setItemMeta(bannerMeta);
+    }
+
+    private static PatternType resolvePatternType(String... candidates) {
+        for (var name : candidates) {
+            try {
+                return PatternType.valueOf(name);
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
+        return PatternType.STRIPE_MIDDLE; // Fallback pattern
     }
 
     private int id;
