@@ -4,7 +4,7 @@ plugins {
 
 group = "xyz.holocons.mc"
 version = "1.21.8_update"
-description = "Banner waypoints for HoloCons"
+description = "WhispWaypoints - Banner waypoints for Minecraft servers"
 
 java {
     // Paper 1.21+ requires Java 21
@@ -63,10 +63,10 @@ tasks {
             "description" to project.description,
             // Target newer Minecraft API version
             "apiVersion" to "1.21",
-            "authors" to listOf("dlee13"),
-            "website" to "holocons.xyz",
+            "authors" to listOf("dlee13", "wolftailvale"),
+            "website" to "github.com/WolfTailVale/holocons-waypoints-whispcraft",
             "depend" to listOf("ProtocolLib"),
-            "prefix" to "Waypoints",
+            "prefix" to "WhispWaypoints",
         )
 
         filesMatching("plugin.yml") {

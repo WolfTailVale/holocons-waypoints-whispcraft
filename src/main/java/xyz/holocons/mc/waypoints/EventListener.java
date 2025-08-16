@@ -47,7 +47,7 @@ public final class EventListener implements Listener {
         }
 
         final var blockPlaced = event.getBlockPlaced();
-        final var player =  event.getPlayer();
+        final var player = event.getPlayer();
         final var task = travelerMap.getTask(player, TravelerTask.class);
 
         if (task == null) {
@@ -83,40 +83,43 @@ public final class EventListener implements Listener {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent event) {
         final var block = event.getBlock();
-        
+
         // Check if this block is a waypoint banner
         if (!waypointMap.isWaypoint(block)) {
             return;
         }
-        
+
         final var player = event.getPlayer();
         final var waypoint = waypointMap.getNearbyWaypoint(block);
-        
+
         // Only allow staff to break waypoint banners
         if (!player.hasPermission("waypoints.staff")) {
             event.setCancelled(true);
-            player.sendMessage(Component.text("You cannot break waypoint banners! Use /editwaypoints delete to remove waypoints.", NamedTextColor.RED));
+            player.sendMessage(
+                    Component.text("You cannot break waypoint banners! Use /editwaypoints delete to remove waypoints.",
+                            NamedTextColor.RED));
             return;
         }
-        
+
         // If staff breaks a waypoint banner, remove the waypoint data
         waypointMap.removeWaypoint(waypoint);
         travelerMap.removeWaypoint(waypoint);
-        
+
         // Refund tokens to contributors
         final var maxTokens = plugin.getMaxTokens();
         for (final var uniqueId : waypoint.getContributors()) {
             final var traveler = travelerMap.getOrCreateTraveler(uniqueId);
             traveler.setTokens(Math.min(traveler.getTokens() + 1, maxTokens));
         }
-        
+
         hologramMap.remove(waypoint);
-        player.sendMessage(Component.text("Waypoint removed and tokens refunded to contributors.", NamedTextColor.GREEN));
+        player.sendMessage(
+                Component.text("Waypoint removed and tokens refunded to contributors.", NamedTextColor.GREEN));
     }
 
     private boolean isValidWaypointPlacement(Block blockPlaced, Block blockAgainst) {
         return blockAgainst.getFace(blockPlaced) == BlockFace.UP
-            && plugin.getWaypointWorlds().contains(blockPlaced.getWorld().getName());
+                && plugin.getWaypointWorlds().contains(blockPlaced.getWorld().getName());
     }
 
     @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = false)
@@ -125,10 +128,12 @@ public final class EventListener implements Listener {
             return;
         }
         event.setCancelled(true);
-        if (!event.getAction().equals(InventoryAction.PICKUP_ALL) || !(event.getClickedInventory().getHolder() instanceof Menu)) {
+        if (!event.getAction().equals(InventoryAction.PICKUP_ALL)
+                || !(event.getClickedInventory().getHolder() instanceof Menu)) {
             return;
         }
-       Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> menu.handleClick(event.getCurrentItem(), event.getSlot()));
+        Bukkit.getScheduler().scheduleSyncDelayedTask(plugin,
+                () -> menu.handleClick(event.getCurrentItem(), event.getSlot()));
     }
 
     @EventHandler
@@ -155,7 +160,8 @@ public final class EventListener implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
     public void onPlayerInteract(PlayerInteractEvent event) {
-        if (event.isBlockInHand() || event.getAction() != Action.RIGHT_CLICK_BLOCK || event.getHand() != EquipmentSlot.HAND) {
+        if (event.isBlockInHand() || event.getAction() != Action.RIGHT_CLICK_BLOCK
+                || event.getHand() != EquipmentSlot.HAND) {
             return;
         }
 
@@ -164,7 +170,8 @@ public final class EventListener implements Listener {
         final var task = travelerMap.getTask(player, TravelerTask.class);
 
         if (!waypointMap.isWaypoint(clickedBlock)) {
-            final var destinationBlock = clickedBlock.isPassable() ? clickedBlock : clickedBlock.getRelative(BlockFace.UP);
+            final var destinationBlock = clickedBlock.isPassable() ? clickedBlock
+                    : clickedBlock.getRelative(BlockFace.UP);
             if (task == null || !destinationBlock.isPassable()) {
                 return;
             }
@@ -202,7 +209,7 @@ public final class EventListener implements Listener {
                 final var tokenRequirement = plugin.getWaypointActivateCost();
                 final var contributors = waypoint.getContributorNames();
                 final var contributorNamesBuilder = Component.text()
-                    .color(NamedTextColor.GOLD);
+                        .color(NamedTextColor.GOLD);
                 if (contributors.isEmpty()) {
                     contributorNamesBuilder.append(Component.text("Nobody has contributed to this waypoint!"));
                 } else {

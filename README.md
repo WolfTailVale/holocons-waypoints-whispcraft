@@ -1,8 +1,8 @@
-# Waypoints Plugin
+# WhispWaypoints
 
 A banner-based waypoint system for Minecraft Paper 1.21+ servers. Players can create, activate, and teleport to custom waypoints using banners and a token-based activation system.
 
-Originally developed for the Hololive Construction Minecraft server by Derek Lee (@dlee13), updated for Paper 1.21+ by wolftailvale.
+Originally developed for the Hololive Construction Minecraft server by Derek Lee (@dlee13), updated for Paper 1.21+ by wolftailvale and renamed to WhispWaypoints.
 
 ## Features
 
@@ -17,10 +17,10 @@ Originally developed for the Hololive Construction Minecraft server by Derek Lee
 ## Installation
 
 1. Download the latest release JAR file
-2. Place `waypoints-x.x.x.jar` in your server's `plugins/` folder
+2. Place `WhispWaypoints-x.x.x.jar` in your server's `plugins/` folder
 3. Download and install [ProtocolLib](https://www.spigotmc.org/resources/protocollib.1997/) (required dependency)
 4. Restart your server
-5. Configure `plugins/waypoints/config.yml` as needed
+5. Configure `plugins/WhispWaypoints/config.yml` as needed
 
 ## Usage
 
@@ -69,7 +69,7 @@ Players with `waypoints.staff` permission (ops by default):
 
 ## Configuration
 
-Edit `plugins/waypoints/config.yml`:
+Edit `plugins/WhispWaypoints/config.yml`:
 
 ```yaml
 charge:
@@ -99,9 +99,9 @@ world:
 
 ## Data Storage
 
-- **Waypoints**: `plugins/waypoints/waypoint.json`
-- **Players**: `plugins/waypoints/traveler.json`  
-- **Backups**: `plugins/waypoints/backup-[timestamp].zip`
+- **Waypoints**: `plugins/WhispWaypoints/waypoint.json`
+- **Players**: `plugins/WhispWaypoints/traveler.json`  
+- **Backups**: `plugins/WhispWaypoints/backup-[timestamp].zip`
 
 ## Building from Source
 
@@ -115,7 +115,7 @@ cd holocons-waypoints-whispcraft
 ./gradlew clean build
 ```
 
-Built JAR will be in `build/libs/`
+Built JAR will be in `build/libs/` as `WhispWaypoints-x.x.x.jar`
 
 ## Credits
 
