@@ -52,6 +52,14 @@ Newly created waypoints start inactive and need tokens to activate:
    - Home: `/waypoints sethome` then right-click a location
    - Camp: `/waypoints setcamp` then right-click a location
 
+### Camp Shortcuts
+
+Quick commands for camp management:
+
+- `/setcamp` - Set your camp location (same as `/waypoints setcamp`)
+- `/camp` - Teleport to your camp (same as `/waypoints teleport camp`) 
+- `/unsetcamp` - Remove your camp location
+
 ### Staff Commands
 
 Players with `waypoints.staff` permission (ops by default):

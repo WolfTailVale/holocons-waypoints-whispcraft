@@ -15,6 +15,18 @@ commands:
   editwaypoints:
     usage: /editwaypoints [activate | delete | menu | unsetcamps | unsethomes]
     permission: waypoints.staff
+  setcamp:
+    usage: /setcamp
+    permission: waypoints.player
+    description: Shortcut to set your camp location
+  camp:
+    usage: /camp
+    permission: waypoints.player  
+    description: Teleport to your camp
+  unsetcamp:
+    usage: /unsetcamp
+    permission: waypoints.player
+    description: Remove your camp location
 
 permissions:
   waypoints.player:

@@ -12,6 +12,7 @@ import org.bukkit.command.TabExecutor;
 import org.bukkit.entity.Player;
 
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 
 public class CommandHandler implements TabExecutor {
 
@@ -73,6 +74,17 @@ public class CommandHandler implements TabExecutor {
                             return false;
                         }
                     }
+                }
+                case "SETCAMP" -> {
+                    new TravelerTask(plugin, player, TravelerTask.Type.SETCAMP);
+                }
+                case "CAMP" -> {
+                    teleport(player, "camp");
+                }
+                case "UNSETCAMP" -> {
+                    final var traveler = travelerMap.getOrCreateTraveler(player);
+                    traveler.setCamp(null);
+                    player.sendMessage(Component.text("Your camp has been removed!", NamedTextColor.GREEN));
                 }
             }
         } else {

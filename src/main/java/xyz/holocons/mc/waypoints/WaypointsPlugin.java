@@ -33,6 +33,9 @@ public final class WaypointsPlugin extends JavaPlugin {
         final var commandHandler = new CommandHandler(this);
         getCommand("waypoints").setExecutor(commandHandler);
         getCommand("editwaypoints").setExecutor(commandHandler);
+        getCommand("setcamp").setExecutor(commandHandler);
+        getCommand("camp").setExecutor(commandHandler);
+        getCommand("unsetcamp").setExecutor(commandHandler);
         final var eventListener = new EventListener(this);
         Bukkit.getPluginManager().registerEvents(eventListener, this);
     }
