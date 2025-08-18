@@ -86,6 +86,14 @@ public class CommandHandler implements TabExecutor {
                 case "UNSETCAMP" -> {
                     unsetCamp(player);
                 }
+                case "RELOADWAYPOINTS" -> {
+                    if (!player.hasPermission("waypoints.staff")) {
+                        player.sendMessage(Component.text("You don't have permission to reload waypoints!", NamedTextColor.RED));
+                        return true;
+                    }
+                    plugin.loadConfig();
+                    player.sendMessage(Component.text("Waypoints configuration reloaded!", NamedTextColor.GREEN));
+                }
             }
         } else {
             if (args.length == 0) {
@@ -146,6 +154,9 @@ public class CommandHandler implements TabExecutor {
                         default -> List.of();
                     };
                 }
+                case "RELOADWAYPOINTS" -> {
+                    yield List.of();
+                }
                 default -> List.of();
             };
         } else {
@@ -184,8 +195,13 @@ public class CommandHandler implements TabExecutor {
 
     private void setCamp(Player player) {
         // Check if the world allows camps
-        if (!plugin.getCampWorlds().contains(player.getWorld().getName())) {
+        String currentWorld = player.getWorld().getName();
+        List<String> allowedWorlds = plugin.getCampWorlds();
+        
+        if (!allowedWorlds.contains(currentWorld)) {
             player.sendMessage(Component.text("You cannot set a camp in this world!", NamedTextColor.RED));
+            player.sendMessage(Component.text("Current world: " + currentWorld, NamedTextColor.YELLOW));
+            player.sendMessage(Component.text("Allowed worlds: " + String.join(", ", allowedWorlds), NamedTextColor.YELLOW));
             return;
         }
 

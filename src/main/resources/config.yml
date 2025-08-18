@@ -7,7 +7,7 @@ charge:
   particle-effect: null
 token:
   capacity: 1
-  activate-waypoint-cost: 8
+  activate-waypoint-cost: 3
   particle-effect: null
 teleport:
   wait-time: 140
@@ -16,8 +16,8 @@ world:
   home:
     - world
   camp:
-    - world_nether
-    - world_the_end
+    - resource_world
+    - resource_nether
   waypoint:
     - world
     - world_nether

@@ -27,6 +27,10 @@ commands:
     usage: /unsetcamp
     permission: waypoints.player
     description: Remove your camp location
+  reloadwaypoints:
+    usage: /reloadwaypoints
+    permission: waypoints.staff
+    description: Reload the waypoints configuration
 
 permissions:
   waypoints.player:
