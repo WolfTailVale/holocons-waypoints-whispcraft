@@ -50,15 +50,22 @@ Newly created waypoints start inactive and need tokens to activate:
    - Direct command: `/waypoints teleport <name>`
 3. **Set locations**:
    - Home: `/waypoints sethome` then right-click a location
-   - Camp: `/waypoints setcamp` then right-click a location
+   - Camp: `/setcamp` (automatically places banner at your current location)
 
 ### Camp Shortcuts
 
 Quick commands for camp management:
 
-- `/setcamp` - Set your camp location (same as `/waypoints setcamp`)
+- `/setcamp` - Automatically places a white banner at your location with your name and sets it as your camp
 - `/camp` - Teleport to your camp (same as `/waypoints teleport camp`) 
-- `/unsetcamp` - Remove your camp location
+- `/unsetcamp` - Removes your camp location and the camp banner
+
+**Camp Features:**
+- **Automatic banner placement**: `/setcamp` places a white banner with "[PlayerName]'s Camp" 
+- **Smart positioning**: Banner is placed on the ground or at your location if suitable
+- **Hologram display**: Shows camp name above the banner (visible to you)
+- **Auto-cleanup**: `/unsetcamp` removes both the banner and hologram
+- **Replaces existing**: Setting a new camp removes any previous camp banner
 
 ### Staff Commands
 
