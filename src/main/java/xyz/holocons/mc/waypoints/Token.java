@@ -32,6 +32,10 @@ public class Token {
         final var itemStack = new ItemStack(Material.ENDER_PEARL);
         final var itemMeta = itemStack.getItemMeta();
         itemMeta.displayName(Component.text("Waypoint Token").decoration(TextDecoration.ITALIC, false));
+        
+        // Set custom model data for resource pack support
+        itemMeta.setCustomModelData(470001); // Unique ID for WhispWaypoints token
+        
         itemMeta.getPersistentDataContainer().set(key, PersistentDataType.BYTE, (byte) 0x0);
         itemStack.setItemMeta(itemMeta);
         return itemStack;

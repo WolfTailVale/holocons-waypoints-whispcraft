@@ -299,17 +299,17 @@ public class CommandHandler implements TabExecutor {
 
         // Get the player's custom banner design or use default
         final var bannerDesign = campBannerMap.getPlayerBannerDesign(player.getUniqueId());
-        
+
         // Set the block to the player's banner type
         block.setType(bannerDesign.getMaterial());
 
         // Get the banner's block state and apply custom design
         final var banner = (org.bukkit.block.Banner) block.getState();
         banner.customName(Component.text(player.getName() + "'s Camp", NamedTextColor.WHITE));
-        
+
         // Apply the custom patterns
         bannerDesign.applyToBanner(banner);
-        
+
         // Track this as a camp banner
         campBannerMap.addCampBanner(location, player.getUniqueId());
 
@@ -344,17 +344,20 @@ public class CommandHandler implements TabExecutor {
 
     private void registerBanner(Player player) {
         final var bannerDesign = campBannerMap.createBannerDesignFromHeldItem(player);
-        
+
         if (bannerDesign == null) {
             player.sendMessage(Component.text("You must be holding a banner to register it!", NamedTextColor.RED));
             return;
         }
-        
+
         campBannerMap.registerBannerDesign(player.getUniqueId(), bannerDesign);
-        player.sendMessage(Component.text("Banner design registered! This will now be used for your camps.", NamedTextColor.GREEN));
-        
+        player.sendMessage(Component.text("Banner design registered! This will now be used for your camps.",
+                NamedTextColor.GREEN));
+
         // Show them what material type they registered
         final var materialName = bannerDesign.getMaterial().name().toLowerCase().replace("_", " ");
-        player.sendMessage(Component.text("Registered: " + materialName + " with " + bannerDesign.getPatterns().length + " patterns", NamedTextColor.YELLOW));
+        player.sendMessage(Component.text(
+                "Registered: " + materialName + " with " + bannerDesign.getPatterns().length + " patterns",
+                NamedTextColor.YELLOW));
     }
 }

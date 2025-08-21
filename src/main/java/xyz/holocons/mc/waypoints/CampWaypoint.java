@@ -1,11 +1,13 @@
 package xyz.holocons.mc.waypoints;
 
 import org.bukkit.Location;
+
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 
 /**
- * A simple wrapper class to create camp holograms using the existing waypoint hologram system
+ * A simple wrapper class to create camp holograms using the existing waypoint
+ * hologram system
  */
 public class CampWaypoint extends Waypoint {
     private final String campName;

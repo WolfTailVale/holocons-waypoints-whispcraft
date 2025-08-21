@@ -1,0 +1,22 @@
+# PLACEHOLDER for whispwaypoints_token.png
+
+This file should be replaced with a 16x16 pixel PNG image for the custom token texture.
+
+## Suggested Design:
+- A mystical orb or crystal
+- Glowing waypoint compass
+- Runic stone tablet
+- Magical banner symbol
+
+## Creation Tips:
+1. Use 16x16 pixel dimensions
+2. Consider using colors that match the plugin theme
+3. Add subtle glow effects or particles if desired
+4. Keep it recognizable as a "waypoint" or "travel" related item
+
+## Tools:
+- Any image editor (Photoshop, GIMP, Paint.NET, etc.)
+- Pixel art tools like Aseprite
+- Online pixel art editors
+
+Save as: whispwaypoints_token.png

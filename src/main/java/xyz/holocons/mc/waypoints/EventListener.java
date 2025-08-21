@@ -92,7 +92,7 @@ public final class EventListener implements Listener {
             final var owner = plugin.getCampBannerMap().getCampBannerOwner(location);
             final var ownerName = Bukkit.getOfflinePlayer(owner).getName();
             player.sendMessage(
-                    Component.text("This camp banner belongs to " + ownerName + " and cannot be broken!", 
+                    Component.text("This camp banner belongs to " + ownerName + " and cannot be broken!",
                             NamedTextColor.RED));
             return;
         }
@@ -152,19 +152,19 @@ public final class EventListener implements Listener {
     public void onPlayerChunkLoad(PlayerChunkLoadEvent event) {
         final var chunk = event.getChunk();
         final var player = event.getPlayer();
-        
+
         // Handle regular waypoint holograms
         final var waypoint = waypointMap.getWaypoint(chunk.getChunkKey());
         if (waypoint != null && waypoint.getLocation().getWorld() == event.getWorld()) {
             hologramMap.show(waypoint, player);
         }
-        
+
         // Handle camp banner holograms - check all tracked camp banners in this chunk
         final var campBannerMap = plugin.getCampBannerMap();
         for (var entry : campBannerMap.getAllCampBanners().entrySet()) {
             final var location = entry.getKey();
             final var ownerId = entry.getValue();
-            
+
             // Check if this camp banner is in the loaded chunk
             if (location.getChunk().equals(chunk)) {
                 final var ownerName = Bukkit.getOfflinePlayer(ownerId).getName();
@@ -325,14 +325,14 @@ public final class EventListener implements Listener {
     public void onPlayerJoin(PlayerJoinEvent event) {
         final var player = event.getPlayer();
         travelerMap.getOrCreateTraveler(player).startRegenCharge(plugin);
-        
+
         // Show holograms for all camp banners in loaded chunks
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             final var campBannerMap = plugin.getCampBannerMap();
             for (var entry : campBannerMap.getAllCampBanners().entrySet()) {
                 final var location = entry.getKey();
                 final var ownerId = entry.getValue();
-                
+
                 // Check if the chunk is loaded
                 if (location.getChunk().isLoaded()) {
                     final var ownerName = Bukkit.getOfflinePlayer(ownerId).getName();

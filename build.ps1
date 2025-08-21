@@ -8,6 +8,7 @@ param(
     [string]$SetMinecraft,
     [string]$SetPlugin,
     [switch]$Build,
+    [switch]$BuildPack,
     [switch]$Clean,
     [switch]$ShowVersion,
     [switch]$Help
@@ -28,10 +29,11 @@ if ($Help) {
     Write-Host ""
     Write-Host "Build Commands:" -ForegroundColor Cyan
     Write-Host "  -Build               Build the plugin"
+    Write-Host "  -BuildPack           Build plugin + resource pack"
     Write-Host "  -Clean               Clean and build"
     Write-Host ""
     Write-Host "Examples:" -ForegroundColor Magenta
-    Write-Host "  .\build.ps1 -IncrementPatch -Build     # Increment patch and compile"
+    Write-Host "  .\build.ps1 -IncrementPatch -BuildPack # Increment patch and build everything"
     Write-Host "  .\build.ps1 -SetMinecraft 1.22.0       # Update Minecraft version"
     Write-Host "  .\build.ps1 -SetPlugin 2.0.0           # Set plugin to v2.0.0"
     exit
@@ -47,7 +49,8 @@ function Show-Version {
         Write-Host "Current Version: $version" -ForegroundColor Green
         Write-Host "  Minecraft: $minecraft" -ForegroundColor Yellow
         Write-Host "  Plugin: $plugin" -ForegroundColor Yellow
-    } else {
+    }
+    else {
         Write-Host "version.properties not found!" -ForegroundColor Red
     }
 }
@@ -81,7 +84,8 @@ plugin_patch=$($parts[2])
 "@
         $content | Out-File -FilePath "version.properties" -Encoding UTF8
         Write-Host "Plugin version set to $SetPlugin" -ForegroundColor Green
-    } else {
+    }
+    else {
         Write-Host "Invalid plugin version format. Use: x.y.z" -ForegroundColor Red
         exit 1
     }
@@ -102,13 +106,18 @@ if ($IncrementMajor) {
 if ($Clean) {
     Write-Host "Cleaning and building..." -ForegroundColor Cyan
     .\gradlew.bat clean build -x test
+} elseif ($BuildPack) {
+    Write-Host "Building plugin and resource pack..." -ForegroundColor Cyan
+    .\gradlew.bat build -x test
+    Write-Host "Building resource pack..." -ForegroundColor Cyan
+    .\build-resourcepack.ps1
 } elseif ($Build) {
     Write-Host "Building..." -ForegroundColor Cyan
     .\gradlew.bat build -x test
 }
 
 # Show final version
-if ($IncrementPatch -or $IncrementMinor -or $IncrementMajor -or $SetMinecraft -or $SetPlugin -or $Build -or $Clean) {
+if ($IncrementPatch -or $IncrementMinor -or $IncrementMajor -or $SetMinecraft -or $SetPlugin -or $Build -or $BuildPack -or $Clean) {
     Write-Host ""
     Show-Version
 }
