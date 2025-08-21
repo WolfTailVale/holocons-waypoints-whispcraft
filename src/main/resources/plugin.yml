@@ -31,6 +31,10 @@ commands:
     usage: /reloadwaypoints
     permission: waypoints.staff
     description: Reload the waypoints configuration
+  registerbanner:
+    usage: /registerbanner
+    permission: waypoints.player
+    description: Register the banner you're holding as your camp banner design
 
 permissions:
   waypoints.player:

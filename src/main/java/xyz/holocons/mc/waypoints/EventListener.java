@@ -83,13 +83,25 @@ public final class EventListener implements Listener {
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent event) {
         final var block = event.getBlock();
+        final var player = event.getPlayer();
+        final var location = block.getLocation();
+
+        // Check if this block is a camp banner (higher priority protection)
+        if (plugin.getCampBannerMap().isCampBanner(location)) {
+            event.setCancelled(true);
+            final var owner = plugin.getCampBannerMap().getCampBannerOwner(location);
+            final var ownerName = Bukkit.getOfflinePlayer(owner).getName();
+            player.sendMessage(
+                    Component.text("This camp banner belongs to " + ownerName + " and cannot be broken!", 
+                            NamedTextColor.RED));
+            return;
+        }
 
         // Check if this block is a waypoint banner
         if (!waypointMap.isWaypoint(block)) {
             return;
         }
 
-        final var player = event.getPlayer();
         final var waypoint = waypointMap.getNearbyWaypoint(block);
 
         // Only allow staff to break waypoint banners
@@ -138,13 +150,28 @@ public final class EventListener implements Listener {
 
     @EventHandler
     public void onPlayerChunkLoad(PlayerChunkLoadEvent event) {
-        final var waypoint = waypointMap.getWaypoint(event.getChunk().getChunkKey());
-
-        if (waypoint == null || waypoint.getLocation().getWorld() != event.getWorld()) {
-            return;
+        final var chunk = event.getChunk();
+        final var player = event.getPlayer();
+        
+        // Handle regular waypoint holograms
+        final var waypoint = waypointMap.getWaypoint(chunk.getChunkKey());
+        if (waypoint != null && waypoint.getLocation().getWorld() == event.getWorld()) {
+            hologramMap.show(waypoint, player);
         }
-
-        hologramMap.show(waypoint, event.getPlayer());
+        
+        // Handle camp banner holograms - check all tracked camp banners in this chunk
+        final var campBannerMap = plugin.getCampBannerMap();
+        for (var entry : campBannerMap.getAllCampBanners().entrySet()) {
+            final var location = entry.getKey();
+            final var ownerId = entry.getValue();
+            
+            // Check if this camp banner is in the loaded chunk
+            if (location.getChunk().equals(chunk)) {
+                final var ownerName = Bukkit.getOfflinePlayer(ownerId).getName();
+                final var tempWaypoint = new CampWaypoint(location, ownerName + "'s Camp");
+                hologramMap.show(tempWaypoint, player);
+            }
+        }
     }
 
     @EventHandler
@@ -298,6 +325,22 @@ public final class EventListener implements Listener {
     public void onPlayerJoin(PlayerJoinEvent event) {
         final var player = event.getPlayer();
         travelerMap.getOrCreateTraveler(player).startRegenCharge(plugin);
+        
+        // Show holograms for all camp banners in loaded chunks
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            final var campBannerMap = plugin.getCampBannerMap();
+            for (var entry : campBannerMap.getAllCampBanners().entrySet()) {
+                final var location = entry.getKey();
+                final var ownerId = entry.getValue();
+                
+                // Check if the chunk is loaded
+                if (location.getChunk().isLoaded()) {
+                    final var ownerName = Bukkit.getOfflinePlayer(ownerId).getName();
+                    final var tempWaypoint = new CampWaypoint(location, ownerName + "'s Camp");
+                    hologramMap.show(tempWaypoint, player);
+                }
+            }
+        }, 1L); // Small delay to ensure player is fully loaded
     }
 
     @EventHandler

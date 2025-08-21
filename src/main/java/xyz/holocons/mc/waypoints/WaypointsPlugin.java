@@ -16,6 +16,7 @@ public final class WaypointsPlugin extends JavaPlugin {
     private HologramMap hologramMap;
     private TravelerMap travelerMap;
     private WaypointMap waypointMap;
+    private CampBannerMap campBannerMap;
     private Token token;
 
     @Override
@@ -25,6 +26,7 @@ public final class WaypointsPlugin extends JavaPlugin {
         hologramMap = new HologramMap();
         travelerMap = new TravelerMap();
         waypointMap = new WaypointMap();
+        campBannerMap = new CampBannerMap(this);
         token = new Token(this);
     }
 
@@ -37,6 +39,7 @@ public final class WaypointsPlugin extends JavaPlugin {
         getCommand("camp").setExecutor(commandHandler);
         getCommand("unsetcamp").setExecutor(commandHandler);
         getCommand("reloadwaypoints").setExecutor(commandHandler);
+        getCommand("registerbanner").setExecutor(commandHandler);
         final var eventListener = new EventListener(this);
         Bukkit.getPluginManager().registerEvents(eventListener, this);
     }
@@ -70,6 +73,7 @@ public final class WaypointsPlugin extends JavaPlugin {
         try {
             travelerMap.loadTravelers(this);
             waypointMap.loadWaypoints(this);
+            loadCampBannerData();
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
@@ -80,6 +84,7 @@ public final class WaypointsPlugin extends JavaPlugin {
         try {
             waypointMap.saveWaypoints(this);
             travelerMap.saveTravelers(this);
+            saveCampBannerData();
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
@@ -154,7 +159,25 @@ public final class WaypointsPlugin extends JavaPlugin {
         return waypointMap;
     }
 
+    public CampBannerMap getCampBannerMap() {
+        return campBannerMap;
+    }
+
     public boolean isToken(Object obj) {
         return token.isToken(obj);
+    }
+
+    private void loadCampBannerData() throws IOException {
+        campBannerMap.clear();
+        // For now, camp banners are not persistent across server restarts
+        // They will be recreated when players use /setcamp
+        // This could be enhanced in the future by saving banner data to JSON files
+        getLogger().info("Camp banner data cleared (non-persistent)");
+    }
+
+    private void saveCampBannerData() throws IOException {
+        // For now, camp banners are not persistent across server restarts
+        // This could be enhanced in the future by saving banner data to JSON files
+        getLogger().info("Camp banner data saved (non-persistent)");
     }
 }

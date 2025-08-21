@@ -21,11 +21,13 @@ public class CommandHandler implements TabExecutor {
     private final WaypointsPlugin plugin;
     private final TravelerMap travelerMap;
     private final WaypointMap waypointMap;
+    private final CampBannerMap campBannerMap;
 
     public CommandHandler(final WaypointsPlugin plugin) {
         this.plugin = plugin;
         this.travelerMap = plugin.getTravelerMap();
         this.waypointMap = plugin.getWaypointMap();
+        this.campBannerMap = plugin.getCampBannerMap();
     }
 
     @Override
@@ -88,11 +90,15 @@ public class CommandHandler implements TabExecutor {
                 }
                 case "RELOADWAYPOINTS" -> {
                     if (!player.hasPermission("waypoints.staff")) {
-                        player.sendMessage(Component.text("You don't have permission to reload waypoints!", NamedTextColor.RED));
+                        player.sendMessage(
+                                Component.text("You don't have permission to reload waypoints!", NamedTextColor.RED));
                         return true;
                     }
                     plugin.loadConfig();
                     player.sendMessage(Component.text("Waypoints configuration reloaded!", NamedTextColor.GREEN));
+                }
+                case "REGISTERBANNER" -> {
+                    registerBanner(player);
                 }
             }
         } else {
@@ -157,6 +163,9 @@ public class CommandHandler implements TabExecutor {
                 case "RELOADWAYPOINTS" -> {
                     yield List.of();
                 }
+                case "REGISTERBANNER" -> {
+                    yield List.of();
+                }
                 default -> List.of();
             };
         } else {
@@ -197,17 +206,18 @@ public class CommandHandler implements TabExecutor {
         // Check if the world allows camps
         String currentWorld = player.getWorld().getName();
         List<String> allowedWorlds = plugin.getCampWorlds();
-        
+
         if (!allowedWorlds.contains(currentWorld)) {
             player.sendMessage(Component.text("You cannot set a camp in this world!", NamedTextColor.RED));
             player.sendMessage(Component.text("Current world: " + currentWorld, NamedTextColor.YELLOW));
-            player.sendMessage(Component.text("Allowed worlds: " + String.join(", ", allowedWorlds), NamedTextColor.YELLOW));
+            player.sendMessage(
+                    Component.text("Allowed worlds: " + String.join(", ", allowedWorlds), NamedTextColor.YELLOW));
             return;
         }
 
         final var traveler = travelerMap.getOrCreateTraveler(player);
         final var location = player.getLocation();
-        
+
         // Remove existing camp banner if it exists
         final var oldCamp = traveler.getCamp();
         if (oldCamp != null) {
@@ -224,11 +234,12 @@ public class CommandHandler implements TabExecutor {
         // Create and place the banner
         if (placeCampBanner(bannerLocation, player)) {
             traveler.setCamp(bannerLocation);
-            
+
             // Create a temporary waypoint for hologram display
             createCampHologram(bannerLocation, player);
-            
-            player.sendMessage(Component.text("Camp set! A banner has been placed to mark your location.", NamedTextColor.GREEN));
+
+            player.sendMessage(
+                    Component.text("Camp set! A banner has been placed to mark your location.", NamedTextColor.GREEN));
         } else {
             player.sendMessage(Component.text("Could not place camp banner!", NamedTextColor.RED));
         }
@@ -237,7 +248,7 @@ public class CommandHandler implements TabExecutor {
     private void unsetCamp(Player player) {
         final var traveler = travelerMap.getOrCreateTraveler(player);
         final var camp = traveler.getCamp();
-        
+
         if (camp == null) {
             player.sendMessage(Component.text("You don't have a camp to remove!", NamedTextColor.YELLOW));
             return;
@@ -245,10 +256,10 @@ public class CommandHandler implements TabExecutor {
 
         // Remove the camp banner
         removeCampBanner(camp);
-        
+
         // Remove camp hologram
         removeCampHologram(camp, player);
-        
+
         // Clear the camp from traveler data
         traveler.setCamp(null);
         player.sendMessage(Component.text("Your camp has been removed!", NamedTextColor.GREEN));
@@ -265,7 +276,7 @@ public class CommandHandler implements TabExecutor {
             final var checkLoc = new Location(world, blockX, y, blockZ);
             final var block = checkLoc.getBlock();
             final var above = block.getRelative(BlockFace.UP);
-            
+
             if (!block.getType().isAir() && above.getType().isAir()) {
                 return above.getLocation();
             }
@@ -286,30 +297,33 @@ public class CommandHandler implements TabExecutor {
             return false;
         }
 
-        // Set the block to a white banner
-        block.setType(Material.WHITE_BANNER);
+        // Get the player's custom banner design or use default
+        final var bannerDesign = campBannerMap.getPlayerBannerDesign(player.getUniqueId());
         
-        // Get the banner's block state and set custom name
+        // Set the block to the player's banner type
+        block.setType(bannerDesign.getMaterial());
+
+        // Get the banner's block state and apply custom design
         final var banner = (org.bukkit.block.Banner) block.getState();
         banner.customName(Component.text(player.getName() + "'s Camp", NamedTextColor.WHITE));
-        banner.update();
+        
+        // Apply the custom patterns
+        bannerDesign.applyToBanner(banner);
+        
+        // Track this as a camp banner
+        campBannerMap.addCampBanner(location, player.getUniqueId());
 
         return true;
     }
 
     private void removeCampBanner(Location location) {
-        final var block = location.getBlock();
-        if (block.getType() == Material.WHITE_BANNER) {
-            final var banner = block.getState();
-            if (banner instanceof org.bukkit.block.Banner bannerState) {
-                final var customName = bannerState.customName();
-                // Only remove if it's a camp banner (has custom name ending with "'s Camp")
-                if (customName != null) {
-                    final var plainName = net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer.plainText().serialize(customName);
-                    if (plainName.endsWith("'s Camp")) {
-                        block.setType(Material.AIR);
-                    }
-                }
+        // Check if this is a tracked camp banner
+        if (campBannerMap.isCampBanner(location)) {
+            final var block = location.getBlock();
+            // Remove any banner type (not just white banners)
+            if (block.getType().name().endsWith("_BANNER")) {
+                block.setType(Material.AIR);
+                campBannerMap.removeCampBanner(location);
             }
         }
     }
@@ -328,28 +342,19 @@ public class CommandHandler implements TabExecutor {
         hologramMap.hide(tempWaypoint, player);
     }
 
-    // Simple wrapper class to create camp holograms using the existing waypoint hologram system
-    private static class CampWaypoint extends Waypoint {
-        private final String campName;
-
-        public CampWaypoint(Location location, String name) {
-            super(-1, location, null, true); // Use -1 as ID for camp waypoints
-            this.campName = name;
+    private void registerBanner(Player player) {
+        final var bannerDesign = campBannerMap.createBannerDesignFromHeldItem(player);
+        
+        if (bannerDesign == null) {
+            player.sendMessage(Component.text("You must be holding a banner to register it!", NamedTextColor.RED));
+            return;
         }
-
-        @Override
-        public Component getDisplayName() {
-            return Component.text(campName, NamedTextColor.YELLOW);
-        }
-
-        @Override
-        public String getName() {
-            return campName;
-        }
-
-        @Override
-        public boolean hasName() {
-            return true;
-        }
+        
+        campBannerMap.registerBannerDesign(player.getUniqueId(), bannerDesign);
+        player.sendMessage(Component.text("Banner design registered! This will now be used for your camps.", NamedTextColor.GREEN));
+        
+        // Show them what material type they registered
+        final var materialName = bannerDesign.getMaterial().name().toLowerCase().replace("_", " ");
+        player.sendMessage(Component.text("Registered: " + materialName + " with " + bannerDesign.getPatterns().length + " patterns", NamedTextColor.YELLOW));
     }
 }

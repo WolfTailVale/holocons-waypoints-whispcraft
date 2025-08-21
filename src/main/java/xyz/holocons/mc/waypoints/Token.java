@@ -22,9 +22,10 @@ public class Token {
 
     private ShapedRecipe getRecipe() {
         return new ShapedRecipe(key, getItemStack())
-                .shape("aaa", "aba", "aaa")
-                .setIngredient('a', Material.ECHO_SHARD)
-                .setIngredient('b', Material.ENDER_PEARL);
+                .shape("aea", "ebe", "aea")
+                .setIngredient('a', Material.ENDER_EYE)
+                .setIngredient('e', Material.ECHO_SHARD)
+                .setIngredient('b', Material.WHITE_BANNER);
     }
 
     private ItemStack getItemStack() {
