@@ -1,10 +1,31 @@
+import java.io.ByteArrayOutputStream
+import java.util.Properties
+
 plugins {
     `java-library`
 }
 
+// Load version properties
+val versionProps = Properties()
+val versionFile = file("version.properties")
+if (versionFile.exists()) {
+    versionFile.inputStream().use { versionProps.load(it) }
+}
+
+// Build clean version string: MinecraftVersion_PluginVersion
+val minecraftVersion = versionProps.getProperty("minecraft", "1.21.8")
+val pluginMajor = versionProps.getProperty("plugin_major", "1")
+val pluginMinor = versionProps.getProperty("plugin_minor", "3")
+val pluginPatch = versionProps.getProperty("plugin_patch", "0")
+
+val buildVersion = "${minecraftVersion}_${pluginMajor}.${pluginMinor}.${pluginPatch}"
+
 group = "xyz.holocons.mc"
-version = "1.21.8_update"
+version = buildVersion
 description = "WhispWaypoints - Banner waypoints for Minecraft servers"
+
+// Print version info
+println("Building WhispWaypoints version: $version")
 
 java {
     // Paper 1.21+ requires Java 21
@@ -71,6 +92,96 @@ tasks {
 
         filesMatching("plugin.yml") {
             expand(pluginProperties)
+        }
+    }
+
+    // Task to increment plugin version
+    register("incrementPatch") {
+        group = "versioning"
+        description = "Increments the plugin patch version (x.y.z -> x.y.z+1)"
+        doLast {
+            if (versionFile.exists()) {
+                val currentPatch = versionProps.getProperty("plugin_patch", "0").toInt()
+                val newPatch = currentPatch + 1
+                
+                val lines = versionFile.readLines().toMutableList()
+                for (i in lines.indices) {
+                    if (lines[i].startsWith("plugin_patch=")) {
+                        lines[i] = "plugin_patch=$newPatch"
+                        break
+                    }
+                }
+                
+                versionFile.writeText(lines.joinToString("\n"))
+                println("Plugin patch version incremented: $currentPatch -> $newPatch")
+            }
+        }
+    }
+
+    register("incrementMinor") {
+        group = "versioning"
+        description = "Increments the plugin minor version and resets patch to 0"
+        doLast {
+            if (versionFile.exists()) {
+                val currentMinor = versionProps.getProperty("plugin_minor", "3").toInt()
+                val newMinor = currentMinor + 1
+                
+                val lines = versionFile.readLines().toMutableList()
+                for (i in lines.indices) {
+                    when {
+                        lines[i].startsWith("plugin_minor=") -> lines[i] = "plugin_minor=$newMinor"
+                        lines[i].startsWith("plugin_patch=") -> lines[i] = "plugin_patch=0"
+                    }
+                }
+                
+                versionFile.writeText(lines.joinToString("\n"))
+                println("Plugin minor version incremented: $currentMinor -> $newMinor (patch reset to 0)")
+            }
+        }
+    }
+
+    register("incrementMajor") {
+        group = "versioning"
+        description = "Increments the plugin major version and resets minor/patch to 0"
+        doLast {
+            if (versionFile.exists()) {
+                val currentMajor = versionProps.getProperty("plugin_major", "1").toInt()
+                val newMajor = currentMajor + 1
+                
+                val lines = versionFile.readLines().toMutableList()
+                for (i in lines.indices) {
+                    when {
+                        lines[i].startsWith("plugin_major=") -> lines[i] = "plugin_major=$newMajor"
+                        lines[i].startsWith("plugin_minor=") -> lines[i] = "plugin_minor=0"
+                        lines[i].startsWith("plugin_patch=") -> lines[i] = "plugin_patch=0"
+                    }
+                }
+                
+                versionFile.writeText(lines.joinToString("\n"))
+                println("Plugin major version incremented: $currentMajor -> $newMajor (minor/patch reset to 0)")
+            }
+        }
+    }
+
+    // Task to set Minecraft version
+    register<Task>("setMinecraftVersion") {
+        group = "versioning"
+        description = "Sets the Minecraft version (use -PmcVersion=1.21.8)"
+        doLast {
+            val newMcVersion = project.findProperty("mcVersion") as String? ?: "1.21.8"
+            
+            if (versionFile.exists()) {
+                val lines = versionFile.readLines().toMutableList()
+                for (i in lines.indices) {
+                    if (lines[i].startsWith("minecraft=")) {
+                        lines[i] = "minecraft=$newMcVersion"
+                        break
+                    }
+                }
+                
+                versionFile.writeText(lines.joinToString("\n"))
+                println("Minecraft version set to: $newMcVersion")
+            }
         }
     }
 }
