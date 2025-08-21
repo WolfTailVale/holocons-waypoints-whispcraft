@@ -4,6 +4,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.ThrowableProjectile;
+import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.ShapedRecipe;
 import org.bukkit.persistence.PersistentDataType;
@@ -29,13 +30,16 @@ public class Token {
     }
 
     private ItemStack getItemStack() {
-        final var itemStack = new ItemStack(Material.ENDER_PEARL);
+        final var itemStack = new ItemStack(Material.PAPER);
         final var itemMeta = itemStack.getItemMeta();
         itemMeta.displayName(Component.text("Waypoint Token").decoration(TextDecoration.ITALIC, false));
-        
+
         // Set custom model data for resource pack support
         itemMeta.setCustomModelData(470001); // Unique ID for WhispWaypoints token
-        
+
+        // Add item flags to prevent throwing and other unwanted interactions
+        itemMeta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES, ItemFlag.HIDE_ENCHANTS);
+
         itemMeta.getPersistentDataContainer().set(key, PersistentDataType.BYTE, (byte) 0x0);
         itemStack.setItemMeta(itemMeta);
         return itemStack;
@@ -52,7 +56,7 @@ public class Token {
 
     private boolean isTokenItemStack(Object obj) {
         return obj instanceof ItemStack itemStack
-                && itemStack.getType() == Material.ENDER_PEARL
+                && itemStack.getType() == Material.PAPER
                 && itemStack.getItemMeta().getPersistentDataContainer().has(key);
     }
 }

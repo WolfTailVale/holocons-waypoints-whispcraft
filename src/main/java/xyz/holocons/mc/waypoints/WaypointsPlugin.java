@@ -168,16 +168,12 @@ public final class WaypointsPlugin extends JavaPlugin {
     }
 
     private void loadCampBannerData() throws IOException {
-        campBannerMap.clear();
-        // For now, camp banners are not persistent across server restarts
-        // They will be recreated when players use /setcamp
-        // This could be enhanced in the future by saving banner data to JSON files
-        getLogger().info("Camp banner data cleared (non-persistent)");
+        campBannerMap.loadCampBanners(this);
+        getLogger().info("Camp banner data loaded");
     }
 
     private void saveCampBannerData() throws IOException {
-        // For now, camp banners are not persistent across server restarts
-        // This could be enhanced in the future by saving banner data to JSON files
-        getLogger().info("Camp banner data saved (non-persistent)");
+        campBannerMap.saveCampBanners(this);
+        getLogger().info("Camp banner data saved");
     }
 }

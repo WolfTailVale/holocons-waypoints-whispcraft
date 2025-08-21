@@ -106,12 +106,14 @@ if ($IncrementMajor) {
 if ($Clean) {
     Write-Host "Cleaning and building..." -ForegroundColor Cyan
     .\gradlew.bat clean build -x test
-} elseif ($BuildPack) {
+}
+elseif ($BuildPack) {
     Write-Host "Building plugin and resource pack..." -ForegroundColor Cyan
     .\gradlew.bat build -x test
     Write-Host "Building resource pack..." -ForegroundColor Cyan
     .\build-resourcepack.ps1
-} elseif ($Build) {
+}
+elseif ($Build) {
     Write-Host "Building..." -ForegroundColor Cyan
     .\gradlew.bat build -x test
 }

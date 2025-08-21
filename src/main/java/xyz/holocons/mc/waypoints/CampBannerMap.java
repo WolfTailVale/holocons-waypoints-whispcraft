@@ -1,5 +1,6 @@
 package xyz.holocons.mc.waypoints;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -106,6 +107,112 @@ public class CampBannerMap {
      */
     public Map<UUID, BannerDesign> getAllBannerDesigns() {
         return new HashMap<>(playerBannerDesigns);
+    }
+
+    /**
+     * Saves camp banner data to file
+     */
+    public void saveCampBanners(WaypointsPlugin plugin) throws IOException {
+        final var file = new java.io.File(plugin.getDataFolder(), "campbanners.json");
+        try (final var writer = new GsonWriter(file)) {
+            writer.beginObject();
+            
+            // Save camp banner locations and owners
+            writer.name("campBanners");
+            writer.beginArray();
+            for (Map.Entry<Location, UUID> entry : campBanners.entrySet()) {
+                writer.beginObject();
+                writer.name("location");
+                writer.writeLocation(entry.getKey());
+                writer.name("owner");
+                writer.writeUUID(entry.getValue());
+                writer.endObject();
+            }
+            writer.endArray();
+            
+            // Save player banner designs
+            writer.name("bannerDesigns");
+            writer.beginArray();
+            for (Map.Entry<UUID, BannerDesign> entry : playerBannerDesigns.entrySet()) {
+                writer.beginObject();
+                writer.name("playerId");
+                writer.writeUUID(entry.getKey());
+                writer.name("design");
+                writer.writeBannerDesign(entry.getValue());
+                writer.endObject();
+            }
+            writer.endArray();
+            
+            writer.endObject();
+        }
+    }
+
+    /**
+     * Loads camp banner data from file
+     */
+    public void loadCampBanners(WaypointsPlugin plugin) throws IOException {
+        final var file = new java.io.File(plugin.getDataFolder(), "campbanners.json");
+        if (!file.exists()) {
+            return;
+        }
+        
+        clear();
+        
+        try (final var reader = new GsonReader(file)) {
+            reader.beginObject();
+            
+            while (reader.hasNext()) {
+                switch (reader.nextName()) {
+                    case "campBanners" -> {
+                        reader.beginArray();
+                        while (reader.hasNext()) {
+                            reader.beginObject();
+                            Location location = null;
+                            UUID owner = null;
+                            
+                            while (reader.hasNext()) {
+                                switch (reader.nextName()) {
+                                    case "location" -> location = reader.readLocation();
+                                    case "owner" -> owner = reader.readUUID();
+                                    default -> reader.skipValue();
+                                }
+                            }
+                            reader.endObject();
+                            
+                            if (location != null && owner != null) {
+                                campBanners.put(location, owner);
+                            }
+                        }
+                        reader.endArray();
+                    }
+                    case "bannerDesigns" -> {
+                        reader.beginArray();
+                        while (reader.hasNext()) {
+                            reader.beginObject();
+                            UUID playerId = null;
+                            BannerDesign design = null;
+                            
+                            while (reader.hasNext()) {
+                                switch (reader.nextName()) {
+                                    case "playerId" -> playerId = reader.readUUID();
+                                    case "design" -> design = reader.readBannerDesign();
+                                    default -> reader.skipValue();
+                                }
+                            }
+                            reader.endObject();
+                            
+                            if (playerId != null && design != null) {
+                                playerBannerDesigns.put(playerId, design);
+                            }
+                        }
+                        reader.endArray();
+                    }
+                    default -> reader.skipValue();
+                }
+            }
+            
+            reader.endObject();
+        }
     }
 
     /**

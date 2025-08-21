@@ -124,4 +124,35 @@ public class GsonWriter extends JsonWriter {
         }
         endArray();
     }
+
+    public void writeUUID(UUID value) throws IOException {
+        if (value == null) {
+            nullValue();
+            return;
+        }
+        value(value.toString());
+    }
+
+    public void writeBannerDesign(CampBannerMap.BannerDesign value) throws IOException {
+        if (value == null) {
+            nullValue();
+            return;
+        }
+
+        beginObject();
+        name("material");
+        value(value.getMaterial().name());
+        name("patterns");
+        beginArray();
+        for (org.bukkit.block.banner.Pattern pattern : value.getPatterns()) {
+            beginObject();
+            name("color");
+            value(pattern.getColor().name());
+            name("pattern");
+            value(pattern.getPattern().toString());
+            endObject();
+        }
+        endArray();
+        endObject();
+    }
 }

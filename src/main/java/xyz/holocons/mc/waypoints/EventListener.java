@@ -187,13 +187,34 @@ public final class EventListener implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
     public void onPlayerInteract(PlayerInteractEvent event) {
+        final var player = event.getPlayer();
+        final var action = event.getAction();
+
+        // Handle token consumption via right-click
+        if ((action == Action.RIGHT_CLICK_AIR || action == Action.RIGHT_CLICK_BLOCK)
+                && event.getHand() == EquipmentSlot.HAND
+                && plugin.isToken(player.getInventory().getItemInMainHand())) {
+
+            event.setCancelled(true);
+            final var playerInventory = player.getInventory();
+            player.playEffect(EntityEffect.BREAK_EQUIPMENT_MAIN_HAND);
+            playerInventory.setItemInMainHand(playerInventory.getItemInMainHand().subtract());
+
+            final var maxTokens = plugin.getMaxTokens();
+            final var traveler = travelerMap.getOrCreateTraveler(player);
+            traveler.setTokens(Math.min(traveler.getTokens() + 1, maxTokens));
+
+            player.sendMessage(Component.text("Token consumed! You now have " + traveler.getTokens() + " tokens.",
+                    NamedTextColor.GREEN));
+            return;
+        }
+
         if (event.isBlockInHand() || event.getAction() != Action.RIGHT_CLICK_BLOCK
                 || event.getHand() != EquipmentSlot.HAND) {
             return;
         }
 
         final var clickedBlock = event.getClickedBlock();
-        final var player = event.getPlayer();
         final var task = travelerMap.getTask(player, TravelerTask.class);
 
         if (!waypointMap.isWaypoint(clickedBlock)) {
@@ -353,26 +374,14 @@ public final class EventListener implements Listener {
 
     @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
     public void onProjectileLaunch(ProjectileLaunchEvent event) {
-        if (!(event.getEntity().getShooter() instanceof Player player)
+        // Tokens are now paper-based and not throwable, but handle any edge cases
+        if (!(event.getEntity().getShooter() instanceof Player)
                 || !plugin.isToken(event.getEntity())) {
             return;
         }
 
+        // Cancel any accidental token projectile launches (shouldn't happen with paper)
         event.setCancelled(true);
-        final var playerInventory = player.getInventory();
-        if (plugin.isToken(playerInventory.getItemInMainHand())) {
-            player.playEffect(EntityEffect.BREAK_EQUIPMENT_MAIN_HAND);
-            playerInventory.setItemInMainHand(playerInventory.getItemInMainHand().subtract());
-        } else if (plugin.isToken(playerInventory.getItemInOffHand())) {
-            player.playEffect(EntityEffect.BREAK_EQUIPMENT_OFF_HAND);
-            playerInventory.setItemInOffHand(playerInventory.getItemInOffHand().subtract());
-        } else {
-            return;
-        }
-
-        final var maxTokens = plugin.getMaxTokens();
-        final var traveler = travelerMap.getOrCreateTraveler(player);
-        traveler.setTokens(Math.min(traveler.getTokens() + 1, maxTokens));
     }
 
     @EventHandler

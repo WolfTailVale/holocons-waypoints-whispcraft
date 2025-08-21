@@ -48,7 +48,8 @@ try {
     Write-Host "   2. Test in Minecraft with the built pack" -ForegroundColor White
     Write-Host "   3. Upload to server for automatic distribution" -ForegroundColor White
     
-} catch {
+}
+catch {
     Write-Host "❌ Failed to create resource pack: $_" -ForegroundColor Red
     exit 1
 }
