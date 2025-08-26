@@ -188,27 +188,7 @@ public final class EventListener implements Listener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
     public void onPlayerInteract(PlayerInteractEvent event) {
         final var player = event.getPlayer();
-        final var action = event.getAction();
-
-        // Handle token consumption via right-click
-        if ((action == Action.RIGHT_CLICK_AIR || action == Action.RIGHT_CLICK_BLOCK)
-                && event.getHand() == EquipmentSlot.HAND
-                && plugin.isToken(player.getInventory().getItemInMainHand())) {
-
-            event.setCancelled(true);
-            final var playerInventory = player.getInventory();
-            player.playEffect(EntityEffect.BREAK_EQUIPMENT_MAIN_HAND);
-            playerInventory.setItemInMainHand(playerInventory.getItemInMainHand().subtract());
-
-            final var maxTokens = plugin.getMaxTokens();
-            final var traveler = travelerMap.getOrCreateTraveler(player);
-            traveler.setTokens(Math.min(traveler.getTokens() + 1, maxTokens));
-
-            player.sendMessage(Component.text("Token consumed! You now have " + traveler.getTokens() + " tokens.",
-                    NamedTextColor.GREEN));
-            return;
-        }
-
+        
         if (event.isBlockInHand() || event.getAction() != Action.RIGHT_CLICK_BLOCK
                 || event.getHand() != EquipmentSlot.HAND) {
             return;
@@ -216,6 +196,7 @@ public final class EventListener implements Listener {
 
         final var clickedBlock = event.getClickedBlock();
         final var task = travelerMap.getTask(player, TravelerTask.class);
+        final var isHoldingToken = plugin.isToken(player.getInventory().getItemInMainHand());
 
         if (!waypointMap.isWaypoint(clickedBlock)) {
             final var destinationBlock = clickedBlock.isPassable() ? clickedBlock
@@ -247,6 +228,32 @@ public final class EventListener implements Listener {
         final var waypoint = waypointMap.getNearbyWaypoint(clickedBlock);
 
         if (task == null) {
+            // Handle direct token consumption when right-clicking waypoints
+            if (isHoldingToken && !waypoint.isActive()) {
+                event.setCancelled(true);
+                
+                final var tokenRequirement = plugin.getWaypointActivateCost();
+                final var contributors = waypoint.getContributors();
+                final var playerInventory = player.getInventory();
+                
+                // Consume the physical token
+                player.playEffect(EntityEffect.BREAK_EQUIPMENT_MAIN_HAND);
+                playerInventory.setItemInMainHand(playerInventory.getItemInMainHand().subtract());
+                
+                // Add contribution to waypoint
+                contributors.add(player.getUniqueId());
+                player.sendMessage(Component.text("You added a token!", NamedTextColor.BLUE));
+                
+                // Check if waypoint should activate
+                if (contributors.size() >= tokenRequirement) {
+                    waypoint.activate();
+                    hologramMap.updateTrackedPlayers(waypoint, player);
+                }
+                
+                sendActionBar(player, contributors.size(), tokenRequirement);
+                return;
+            }
+            
             if (waypoint.isActive()) {
                 final var traveler = travelerMap.getOrCreateTraveler(player);
                 if (!traveler.hasWaypoint(waypoint)) {
@@ -273,25 +280,6 @@ public final class EventListener implements Listener {
             case ACTIVATE -> {
                 waypoint.activate();
                 hologramMap.updateTrackedPlayers(waypoint, player);
-            }
-            case ADDTOKEN -> {
-                if (waypoint.isActive()) {
-                    return;
-                }
-                final var tokenRequirement = plugin.getWaypointActivateCost();
-                final var contributors = waypoint.getContributors();
-                final var traveler = travelerMap.getOrCreateTraveler(player);
-                final var tokens = traveler.getTokens();
-                if (tokens > 0) {
-                    player.sendMessage(Component.text("You added a token!", NamedTextColor.BLUE));
-                    traveler.setTokens(tokens - 1);
-                    contributors.add(player.getUniqueId());
-                    if (contributors.size() >= tokenRequirement) {
-                        waypoint.activate();
-                        hologramMap.updateTrackedPlayers(waypoint, player);
-                    }
-                }
-                sendActionBar(player, contributors.size(), tokenRequirement);
             }
             case CREATE -> {
                 if (waypoint.isActive()) {

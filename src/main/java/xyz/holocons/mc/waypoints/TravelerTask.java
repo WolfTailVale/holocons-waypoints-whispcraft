@@ -13,7 +13,6 @@ public class TravelerTask extends BukkitRunnable {
 
     public enum Type {
         ACTIVATE,
-        ADDTOKEN,
         CREATE,
         DELETE,
         REMOVETOKEN,

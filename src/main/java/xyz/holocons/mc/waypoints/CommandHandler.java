@@ -41,7 +41,7 @@ public class CommandHandler implements TabExecutor {
                     }
                     final var subcommand = args[0].toUpperCase();
                     switch (subcommand) {
-                        case "ADDTOKEN", "CREATE", "REMOVETOKEN", "SETCAMP", "SETHOME" -> {
+                        case "CREATE", "REMOVETOKEN", "SETCAMP", "SETHOME" -> {
                             new TravelerTask(plugin, player, TravelerTask.Type.valueOf(subcommand));
                         }
                         case "CANCEL" -> {
@@ -131,7 +131,7 @@ public class CommandHandler implements TabExecutor {
                 case "WAYPOINTS" -> {
                     yield switch (args.length) {
                         case 1 -> {
-                            yield List.of("addtoken", "create", "removetoken", "setcamp", "sethome", "teleport");
+                            yield List.of("create", "removetoken", "setcamp", "sethome", "teleport");
                         }
                         case 2 -> {
                             if (args[0].equalsIgnoreCase("teleport")) {
