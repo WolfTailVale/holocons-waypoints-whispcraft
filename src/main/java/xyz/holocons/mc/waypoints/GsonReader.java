@@ -12,11 +12,11 @@ import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.UUID;
 
-import com.google.gson.stream.JsonReader;
-import com.google.gson.stream.JsonToken;
-
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonToken;
 
 public class GsonReader extends JsonReader {
 
@@ -212,7 +212,7 @@ public class GsonReader extends JsonReader {
         }
 
         beginObject();
-        
+
         org.bukkit.Material material = org.bukkit.Material.WHITE_BANNER;
         java.util.List<org.bukkit.block.banner.Pattern> patterns = new java.util.ArrayList<>();
 
@@ -229,10 +229,10 @@ public class GsonReader extends JsonReader {
                     beginArray();
                     while (hasNext()) {
                         beginObject();
-                        
+
                         org.bukkit.DyeColor color = org.bukkit.DyeColor.WHITE;
                         org.bukkit.block.banner.PatternType patternType = org.bukkit.block.banner.PatternType.STRIPE_MIDDLE;
-                        
+
                         while (hasNext()) {
                             switch (nextName()) {
                                 case "color" -> {
@@ -254,7 +254,7 @@ public class GsonReader extends JsonReader {
                                 default -> skipValue();
                             }
                         }
-                        
+
                         patterns.add(new org.bukkit.block.banner.Pattern(color, patternType));
                         endObject();
                     }
@@ -265,7 +265,7 @@ public class GsonReader extends JsonReader {
         }
 
         endObject();
-        
+
         return new CampBannerMap.BannerDesign(material, patterns.toArray(new org.bukkit.block.banner.Pattern[0]));
     }
 }

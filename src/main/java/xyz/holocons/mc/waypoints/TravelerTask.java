@@ -16,6 +16,7 @@ public class TravelerTask extends BukkitRunnable {
         CREATE,
         DELETE,
         REMOVETOKEN,
+    REPLACEBANNER,
         SETCAMP,
         SETHOME,
     }
@@ -32,10 +33,10 @@ public class TravelerTask extends BukkitRunnable {
         this.type = type;
         this.expiration = Bukkit.getCurrentTick() + 600;
         final var messageComponent = Component.text()
-            .clickEvent(ClickEvent.runCommand("/waypoints cancel"))
-            .hoverEvent(HoverEvent.showText(Component.text("Click to cancel early!")))
-            .append(Component.text("You entered WAYPOINT " + type.toString() + " mode for 30 seconds!"))
-            .build();
+                .clickEvent(ClickEvent.runCommand("/waypoints cancel"))
+                .hoverEvent(HoverEvent.showText(Component.text("Click to cancel early!")))
+                .append(Component.text("You entered WAYPOINT " + type.toString() + " mode for 30 seconds!"))
+                .build();
         player.sendMessage(messageComponent);
     }
 

@@ -10,10 +10,10 @@ prefix: ${prefix}
 
 commands:
   waypoints:
-    usage: /waypoints [addtoken | create | removetoken | setcamp | sethome | teleport]
+    usage: /waypoints [create | removetoken | setcamp | sethome | teleport | tokendebug | tokenrepair]
     permission: waypoints.player
   editwaypoints:
-    usage: /editwaypoints [activate | delete | menu | unsetcamps | unsethomes]
+  usage: /editwaypoints [activate | delete | menu | unsetcamps | unsethomes | replacebanner]
     permission: waypoints.staff
   setcamp:
     usage: /setcamp
@@ -35,6 +35,10 @@ commands:
     usage: /registerbanner
     permission: waypoints.player
     description: Register the banner you're holding as your camp banner design
+  givewptoken:
+    usage: /givewptoken [amount]
+    permission: waypoints.staff
+    description: Give yourself waypoint tokens
 
 permissions:
   waypoints.player:

@@ -40,6 +40,7 @@ public final class WaypointsPlugin extends JavaPlugin {
         getCommand("unsetcamp").setExecutor(commandHandler);
         getCommand("reloadwaypoints").setExecutor(commandHandler);
         getCommand("registerbanner").setExecutor(commandHandler);
+        getCommand("givewptoken").setExecutor(commandHandler);
         final var eventListener = new EventListener(this);
         Bukkit.getPluginManager().registerEvents(eventListener, this);
     }
@@ -165,6 +166,10 @@ public final class WaypointsPlugin extends JavaPlugin {
 
     public boolean isToken(Object obj) {
         return token.isToken(obj);
+    }
+
+    public Token getToken() {
+        return token;
     }
 
     private void loadCampBannerData() throws IOException {

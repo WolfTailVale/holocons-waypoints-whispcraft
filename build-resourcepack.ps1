@@ -56,6 +56,6 @@ catch {
 
 Write-Host ""
 Write-Host "🎨 Resource Pack Features:" -ForegroundColor Magenta
-Write-Host "   • Custom model data: 470001" -ForegroundColor White
-Write-Host "   • Pack format: 34 (MC 1.21.x)" -ForegroundColor White
+Write-Host "   • Custom model data: 1001" -ForegroundColor White
+Write-Host "   • Pack format: 48 + supported_formats (MC 1.20.5+ through 1.21.x)" -ForegroundColor White
 Write-Host "   • Auto-detects Waypoint Tokens" -ForegroundColor White

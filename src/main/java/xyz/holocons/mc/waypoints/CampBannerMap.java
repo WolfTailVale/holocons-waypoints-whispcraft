@@ -116,7 +116,7 @@ public class CampBannerMap {
         final var file = new java.io.File(plugin.getDataFolder(), "campbanners.json");
         try (final var writer = new GsonWriter(file)) {
             writer.beginObject();
-            
+
             // Save camp banner locations and owners
             writer.name("campBanners");
             writer.beginArray();
@@ -129,7 +129,7 @@ public class CampBannerMap {
                 writer.endObject();
             }
             writer.endArray();
-            
+
             // Save player banner designs
             writer.name("bannerDesigns");
             writer.beginArray();
@@ -142,7 +142,7 @@ public class CampBannerMap {
                 writer.endObject();
             }
             writer.endArray();
-            
+
             writer.endObject();
         }
     }
@@ -155,12 +155,12 @@ public class CampBannerMap {
         if (!file.exists()) {
             return;
         }
-        
+
         clear();
-        
+
         try (final var reader = new GsonReader(file)) {
             reader.beginObject();
-            
+
             while (reader.hasNext()) {
                 switch (reader.nextName()) {
                     case "campBanners" -> {
@@ -169,7 +169,7 @@ public class CampBannerMap {
                             reader.beginObject();
                             Location location = null;
                             UUID owner = null;
-                            
+
                             while (reader.hasNext()) {
                                 switch (reader.nextName()) {
                                     case "location" -> location = reader.readLocation();
@@ -178,7 +178,7 @@ public class CampBannerMap {
                                 }
                             }
                             reader.endObject();
-                            
+
                             if (location != null && owner != null) {
                                 campBanners.put(location, owner);
                             }
@@ -191,7 +191,7 @@ public class CampBannerMap {
                             reader.beginObject();
                             UUID playerId = null;
                             BannerDesign design = null;
-                            
+
                             while (reader.hasNext()) {
                                 switch (reader.nextName()) {
                                     case "playerId" -> playerId = reader.readUUID();
@@ -200,7 +200,7 @@ public class CampBannerMap {
                                 }
                             }
                             reader.endObject();
-                            
+
                             if (playerId != null && design != null) {
                                 playerBannerDesigns.put(playerId, design);
                             }
@@ -210,7 +210,7 @@ public class CampBannerMap {
                     default -> reader.skipValue();
                 }
             }
-            
+
             reader.endObject();
         }
     }

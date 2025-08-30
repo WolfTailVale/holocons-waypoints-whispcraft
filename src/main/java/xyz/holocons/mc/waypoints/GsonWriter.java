@@ -11,9 +11,9 @@ import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.UUID;
 
-import com.google.gson.stream.JsonWriter;
-
 import org.bukkit.Location;
+
+import com.google.gson.stream.JsonWriter;
 
 public class GsonWriter extends JsonWriter {
 

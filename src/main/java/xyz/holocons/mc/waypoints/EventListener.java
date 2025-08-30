@@ -188,7 +188,7 @@ public final class EventListener implements Listener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
     public void onPlayerInteract(PlayerInteractEvent event) {
         final var player = event.getPlayer();
-        
+
         if (event.isBlockInHand() || event.getAction() != Action.RIGHT_CLICK_BLOCK
                 || event.getHand() != EquipmentSlot.HAND) {
             return;
@@ -231,29 +231,29 @@ public final class EventListener implements Listener {
             // Handle direct token consumption when right-clicking waypoints
             if (isHoldingToken && !waypoint.isActive()) {
                 event.setCancelled(true);
-                
+
                 final var tokenRequirement = plugin.getWaypointActivateCost();
                 final var contributors = waypoint.getContributors();
                 final var playerInventory = player.getInventory();
-                
+
                 // Consume the physical token
                 player.playEffect(EntityEffect.BREAK_EQUIPMENT_MAIN_HAND);
                 playerInventory.setItemInMainHand(playerInventory.getItemInMainHand().subtract());
-                
+
                 // Add contribution to waypoint
                 contributors.add(player.getUniqueId());
                 player.sendMessage(Component.text("You added a token!", NamedTextColor.BLUE));
-                
+
                 // Check if waypoint should activate
                 if (contributors.size() >= tokenRequirement) {
                     waypoint.activate();
                     hologramMap.updateTrackedPlayers(waypoint, player);
                 }
-                
+
                 sendActionBar(player, contributors.size(), tokenRequirement);
                 return;
             }
-            
+
             if (waypoint.isActive()) {
                 final var traveler = travelerMap.getOrCreateTraveler(player);
                 if (!traveler.hasWaypoint(waypoint)) {
@@ -318,6 +318,25 @@ public final class EventListener implements Listener {
                 }
                 final var tokenRequirement = plugin.getWaypointActivateCost();
                 sendActionBar(player, contributors.size(), tokenRequirement);
+            }
+            case REPLACEBANNER -> {
+                // Replace the banner at this waypoint with the player's registered design
+                final var campBannerMap = plugin.getCampBannerMap();
+                final var playerDesign = campBannerMap.getPlayerBannerDesign(player.getUniqueId());
+                final var block = clickedBlock;
+                if (!block.getType().name().endsWith("_BANNER")) {
+                    player.sendMessage(Component.text("That block is not a banner.", NamedTextColor.RED));
+                    break;
+                }
+                // Apply new material and patterns
+                block.setType(playerDesign.getMaterial());
+                final var state = block.getState();
+                if (state instanceof org.bukkit.block.Banner banner) {
+                    // Clear existing patterns
+                    banner.getPatterns().clear();
+                    playerDesign.applyToBanner(banner);
+                }
+                player.sendMessage(Component.text("Waypoint banner replaced.", NamedTextColor.GREEN));
             }
             default -> {
                 return;

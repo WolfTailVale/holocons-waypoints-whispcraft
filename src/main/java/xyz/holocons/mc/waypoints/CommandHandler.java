@@ -50,6 +50,12 @@ public class CommandHandler implements TabExecutor {
                         case "TELEPORT" -> {
                             teleport(player, String.join(" ", Arrays.copyOfRange(args, 1, args.length)));
                         }
+                        case "TOKENDEBUG" -> {
+                            debugToken(player);
+                        }
+                        case "TOKENREPAIR" -> {
+                            repairHeldToken(player);
+                        }
                         default -> {
                             return false;
                         }
@@ -64,6 +70,9 @@ public class CommandHandler implements TabExecutor {
                     switch (subcommand) {
                         case "ACTIVATE", "DELETE" -> {
                             new TravelerTask(plugin, player, TravelerTask.Type.valueOf(subcommand));
+                        }
+                        case "REPLACEBANNER" -> {
+                            new TravelerTask(plugin, player, TravelerTask.Type.REPLACEBANNER);
                         }
                         case "MENU" -> {
                             new Menu(plugin, player, Menu.Type.EDIT);
@@ -100,6 +109,27 @@ public class CommandHandler implements TabExecutor {
                 case "REGISTERBANNER" -> {
                     registerBanner(player);
                 }
+                case "GIVEWPTOKEN" -> {
+                    if (!player.hasPermission("waypoints.staff")) {
+                        player.sendMessage(Component.text("No permission.", NamedTextColor.RED));
+                        return true;
+                    }
+                    int amount = 1;
+                    if (args.length > 0) {
+                        try {
+                            amount = Integer.parseInt(args[0]);
+                        } catch (NumberFormatException ignored) {
+                        }
+                    }
+                    amount = Math.max(1, Math.min(64, amount));
+                    final var tokenItem = plugin.getToken().createToken(amount);
+                    final var leftover = player.getInventory().addItem(tokenItem);
+                    if (!leftover.isEmpty()) {
+                        player.getWorld().dropItemNaturally(player.getLocation(), tokenItem);
+                    }
+                    player.sendMessage(Component.text("Given " + amount + " waypoint token" + (amount == 1 ? "" : "s"),
+                            NamedTextColor.GREEN));
+                }
             }
         } else {
             if (args.length == 0) {
@@ -131,7 +161,8 @@ public class CommandHandler implements TabExecutor {
                 case "WAYPOINTS" -> {
                     yield switch (args.length) {
                         case 1 -> {
-                            yield List.of("create", "removetoken", "setcamp", "sethome", "teleport");
+                            yield List.of("create", "removetoken", "setcamp", "sethome", "teleport", "tokendebug",
+                                    "tokenrepair");
                         }
                         case 2 -> {
                             if (args[0].equalsIgnoreCase("teleport")) {
@@ -155,7 +186,7 @@ public class CommandHandler implements TabExecutor {
                 case "EDITWAYPOINTS" -> {
                     yield switch (args.length) {
                         case 1 -> {
-                            yield List.of("activate", "delete", "menu", "unsetcamps", "unsethomes");
+                            yield List.of("activate", "delete", "menu", "unsetcamps", "unsethomes", "replacebanner");
                         }
                         default -> List.of();
                     };
@@ -165,6 +196,9 @@ public class CommandHandler implements TabExecutor {
                 }
                 case "REGISTERBANNER" -> {
                     yield List.of();
+                }
+                case "GIVEWPTOKEN" -> {
+                    yield List.of("1", "2", "4", "8", "16", "32", "64");
                 }
                 default -> List.of();
             };
@@ -200,6 +234,29 @@ public class CommandHandler implements TabExecutor {
         } else {
             new TeleportTask(plugin, player, type, location);
         }
+    }
+
+    private void debugToken(Player player) {
+        final var item = player.getInventory().getItemInMainHand();
+        final boolean isToken = plugin.isToken(item);
+        Integer cmd = null;
+        if (item != null && item.hasItemMeta() && item.getItemMeta().hasCustomModelData()) {
+            cmd = item.getItemMeta().getCustomModelData();
+        }
+        player.sendMessage(Component.text("Token Debug -> isToken=" + isToken + ", customModelData=" + cmd +
+                (cmd == null ? " (no CMD)" : cmd == Token.MODEL_DATA ? " (expected)" : " (unexpected)"),
+                NamedTextColor.AQUA));
+    }
+
+    private void repairHeldToken(Player player) {
+        final var item = player.getInventory().getItemInMainHand();
+        if (item == null || item.getType() != Material.PAPER) {
+            player.sendMessage(Component.text("Hold a potential token (paper) first.", NamedTextColor.RED));
+            return;
+        }
+        final boolean repaired = plugin.getToken().repairToken(item);
+        player.sendMessage(Component.text(repaired ? "Token repaired." : "No changes needed.",
+                repaired ? NamedTextColor.GREEN : NamedTextColor.YELLOW));
     }
 
     private void setCamp(Player player) {
