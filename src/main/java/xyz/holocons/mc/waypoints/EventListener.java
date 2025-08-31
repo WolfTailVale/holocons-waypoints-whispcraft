@@ -320,23 +320,65 @@ public final class EventListener implements Listener {
                 sendActionBar(player, contributors.size(), tokenRequirement);
             }
             case REPLACEBANNER -> {
-                // Replace the banner at this waypoint with the player's registered design
-                final var campBannerMap = plugin.getCampBannerMap();
-                final var playerDesign = campBannerMap.getPlayerBannerDesign(player.getUniqueId());
+                // Check if player is holding a banner
+                final var heldItem = player.getInventory().getItemInMainHand();
+                if (!heldItem.getType().name().endsWith("_BANNER")) {
+                    player.sendMessage(Component.text("You must be holding a banner to replace the waypoint banner!", NamedTextColor.RED));
+                    return;
+                }
+                
                 final var block = clickedBlock;
                 if (!block.getType().name().endsWith("_BANNER")) {
                     player.sendMessage(Component.text("That block is not a banner.", NamedTextColor.RED));
-                    break;
+                    return;
                 }
-                // Apply new material and patterns
-                block.setType(playerDesign.getMaterial());
-                final var state = block.getState();
-                if (state instanceof org.bukkit.block.Banner banner) {
-                    // Clear existing patterns
-                    banner.getPatterns().clear();
-                    playerDesign.applyToBanner(banner);
+                
+                // Store the original banner properties before replacement
+                final var originalState = block.getState();
+                final var originalMaterial = block.getType();
+                final var originalPatterns = originalState instanceof org.bukkit.block.Banner originalBanner ? 
+                    originalBanner.getPatterns() : java.util.List.<org.bukkit.block.banner.Pattern>of();
+                
+                // Replace with the held banner
+                block.setType(heldItem.getType());
+                final var newState = block.getState();
+                
+                // Set facing direction toward player for wall banners
+                if (newState instanceof org.bukkit.block.data.Directional directional) {
+                    final var playerFacing = player.getFacing();
+                    directional.setFacing(playerFacing);
+                    newState.setBlockData(directional);
                 }
-                player.sendMessage(Component.text("Waypoint banner replaced.", NamedTextColor.GREEN));
+                
+                // Apply patterns from held banner if it has any
+                if (newState instanceof org.bukkit.block.Banner newBanner && heldItem.hasItemMeta()) {
+                    final var meta = heldItem.getItemMeta();
+                    if (meta instanceof org.bukkit.inventory.meta.BannerMeta bannerMeta) {
+                        newBanner.getPatterns().clear();
+                        for (final var pattern : bannerMeta.getPatterns()) {
+                            newBanner.addPattern(pattern);
+                        }
+                    }
+                }
+                newState.update();
+                
+                // Give player the original banner
+                final var originalBanner = new org.bukkit.inventory.ItemStack(originalMaterial);
+                if (!originalPatterns.isEmpty() && originalBanner.getItemMeta() instanceof org.bukkit.inventory.meta.BannerMeta originalMeta) {
+                    for (final var pattern : originalPatterns) {
+                        originalMeta.addPattern(pattern);
+                    }
+                    originalBanner.setItemMeta(originalMeta);
+                }
+                
+                // Remove held banner and give original
+                heldItem.setAmount(heldItem.getAmount() - 1);
+                final var leftover = player.getInventory().addItem(originalBanner);
+                if (!leftover.isEmpty()) {
+                    player.getWorld().dropItemNaturally(player.getLocation(), originalBanner);
+                }
+                
+                player.sendMessage(Component.text("Waypoint banner swapped!", NamedTextColor.GREEN));
             }
             default -> {
                 return;

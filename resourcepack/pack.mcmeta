@@ -1,5 +1,8 @@
-{
-    "pack": {
+{    "pack": {
+        "pack_format": 48,
+        "supported_formats": [48, 55, 63, 64],
+        "description": "WhispWaypoints Custom Token Resource Pack (for plugin v1.7.1)"
+    } "pack": {
         "pack_format": 48,
         "supported_formats": [48, 55, 63, 64],
     "description": "WhispWaypoints Custom Token Resource Pack (for plugin v1.7.0)"
