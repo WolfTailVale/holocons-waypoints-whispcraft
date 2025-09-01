@@ -16,7 +16,7 @@ public class TravelerTask extends BukkitRunnable {
         CREATE,
         DELETE,
         REMOVETOKEN,
-    REPLACEBANNER,
+        REPLACEBANNER,
         SETCAMP,
         SETHOME,
     }
