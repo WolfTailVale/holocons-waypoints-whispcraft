@@ -46,12 +46,13 @@ public class TeleportTask extends BukkitRunnable {
         this.initialHealth = player.getHealth();
         this.initialPosition = player.getLocation().toVector();
         this.key = new NamespacedKey(plugin, Integer.toString(taskId));
-        
+
         // Log teleportation attempt
-        plugin.getLogger().info(String.format("[TELEPORT] Player %s (%s) initiated %s teleport to %s (World: %s, Coords: %.1f, %.1f, %.1f) - Cost: %d charges",
+        plugin.getLogger().info(String.format(
+                "[TELEPORT] Player %s (%s) initiated %s teleport to %s (World: %s, Coords: %.1f, %.1f, %.1f) - Cost: %d charges",
                 player.getName(), player.getUniqueId(), type.name().toLowerCase(), destinationName,
                 destination.getWorld().getName(), destination.getX(), destination.getY(), destination.getZ(), cost));
-        
+
         final var bossBar = Bukkit.createBossBar(key, "Teleporting...", BarColor.GREEN, BarStyle.SEGMENTED_20);
         bossBar.setProgress(0.0);
         bossBar.addPlayer(player);
@@ -68,12 +69,12 @@ public class TeleportTask extends BukkitRunnable {
         if (playerTookDamage() || playerMoved()) {
             cancel();
             removeBossBar(key);
-            
+
             // Log teleportation failure due to movement or damage
             String failureReason = playerTookDamage() ? "player took damage" : "player moved";
             plugin.getLogger().info(String.format("[TELEPORT] Player %s (%s) teleportation to %s FAILED - Reason: %s",
                     player.getName(), player.getUniqueId(), destinationName, failureReason));
-            
+
             player.sendMessage("Teleportation failed...");
             return;
         }
@@ -81,8 +82,10 @@ public class TeleportTask extends BukkitRunnable {
         final var bossBar = Bukkit.getBossBar(key);
         if (bossBar == null) {
             // Log unexpected teleportation failure
-            plugin.getLogger().warning(String.format("[TELEPORT] Player %s (%s) teleportation to %s FAILED - Reason: boss bar unexpectedly null",
-                    player.getName(), player.getUniqueId(), destinationName));
+            plugin.getLogger()
+                    .warning(String.format(
+                            "[TELEPORT] Player %s (%s) teleportation to %s FAILED - Reason: boss bar unexpectedly null",
+                            player.getName(), player.getUniqueId(), destinationName));
             cancel();
             return;
         }
@@ -95,31 +98,34 @@ public class TeleportTask extends BukkitRunnable {
             if (charges >= cost) {
                 traveler.setCharges(charges - cost);
                 destination.setDirection(player.getLocation().getDirection());
-                
+
                 // Log successful teleportation
-                plugin.getLogger().info(String.format("[TELEPORT] Player %s (%s) teleportation to %s SUCCESS - Charges used: %d, Remaining: %d",
+                plugin.getLogger().info(String.format(
+                        "[TELEPORT] Player %s (%s) teleportation to %s SUCCESS - Charges used: %d, Remaining: %d",
                         player.getName(), player.getUniqueId(), destinationName, cost, charges - cost));
-                
+
                 player.teleport(destination);
             } else {
                 // Log teleportation failure due to insufficient charges
-                plugin.getLogger().info(String.format("[TELEPORT] Player %s (%s) teleportation to %s FAILED - Reason: insufficient charges (has %d, needs %d)",
+                plugin.getLogger().info(String.format(
+                        "[TELEPORT] Player %s (%s) teleportation to %s FAILED - Reason: insufficient charges (has %d, needs %d)",
                         player.getName(), player.getUniqueId(), destinationName, charges, cost));
-                
+
                 player.sendMessage("Teleportation failed...");
             }
         }
     }
-    
+
     @Override
     public synchronized void cancel() throws IllegalStateException {
         // Log manual cancellation (if not already completed)
         final var bossBar = Bukkit.getBossBar(key);
         if (bossBar != null && bossBar.getProgress() < 1.0) {
-            plugin.getLogger().info(String.format("[TELEPORT] Player %s (%s) teleportation to %s CANCELLED - Manual cancellation or disconnect",
+            plugin.getLogger().info(String.format(
+                    "[TELEPORT] Player %s (%s) teleportation to %s CANCELLED - Manual cancellation or disconnect",
                     player.getName(), player.getUniqueId(), destinationName));
         }
-        
+
         super.cancel();
     }
 
@@ -148,7 +154,7 @@ public class TeleportTask extends BukkitRunnable {
         newLocation.setZ(location.getBlockZ() + 0.5);
         return newLocation;
     }
-    
+
     private String getDestinationName(final Location destination, final Type type) {
         switch (type) {
             case CAMP -> {

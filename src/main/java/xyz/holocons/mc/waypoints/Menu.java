@@ -173,7 +173,7 @@ public class Menu implements InventoryHolder {
                     case CAMP_SLOT -> TeleportTask.Type.CAMP;
                     default -> TeleportTask.Type.WAYPOINT;
                 };
-                
+
                 // Log GUI-initiated teleportation
                 String destinationType = switch (teleportType) {
                     case HOME -> "Home";
@@ -187,9 +187,9 @@ public class Menu implements InventoryHolder {
                         }
                     }
                 };
-                plugin.getLogger().info(String.format("[TELEPORT] Player %s (%s) initiated %s teleport via GUI", 
+                plugin.getLogger().info(String.format("[TELEPORT] Player %s (%s) initiated %s teleport via GUI",
                         player.getName(), player.getUniqueId(), destinationType));
-                
+
                 new TeleportTask(plugin, player, teleportType, location);
                 inventory.close();
             }

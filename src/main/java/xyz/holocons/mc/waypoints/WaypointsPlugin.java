@@ -18,6 +18,7 @@ public final class WaypointsPlugin extends JavaPlugin {
     private WaypointMap waypointMap;
     private CampBannerMap campBannerMap;
     private Token token;
+    private TeleportCharge teleportCharge;
 
     @Override
     public void onLoad() {
@@ -28,6 +29,7 @@ public final class WaypointsPlugin extends JavaPlugin {
         waypointMap = new WaypointMap();
         campBannerMap = new CampBannerMap(this);
         token = new Token(this);
+        teleportCharge = new TeleportCharge(this);
     }
 
     @Override
@@ -170,6 +172,10 @@ public final class WaypointsPlugin extends JavaPlugin {
 
     public Token getToken() {
         return token;
+    }
+
+    public TeleportCharge getTeleportCharge() {
+        return teleportCharge;
     }
 
     private void loadCampBannerData() throws IOException {

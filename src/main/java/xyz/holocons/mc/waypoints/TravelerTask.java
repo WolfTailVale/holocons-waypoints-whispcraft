@@ -60,13 +60,15 @@ public class TravelerTask extends BukkitRunnable {
             // Restore the waypoint to its original location
             final var originalLocation = repositionWaypoint.getLocation();
             final var originalBlock = originalLocation.getBlock();
-            
-            // Only restore if the block is still air (hasn't been replaced by something else)
+
+            // Only restore if the block is still air (hasn't been replaced by something
+            // else)
             if (originalBlock.getType().isAir()) {
                 // Use the stored banner material or fallback to white banner
-                final var bannerMaterial = repositionBannerMaterial != null ? repositionBannerMaterial : org.bukkit.Material.WHITE_BANNER;
+                final var bannerMaterial = repositionBannerMaterial != null ? repositionBannerMaterial
+                        : org.bukkit.Material.WHITE_BANNER;
                 originalBlock.setType(bannerMaterial);
-                
+
                 final var bannerState = originalBlock.getState();
                 if (bannerState instanceof org.bukkit.block.Banner banner) {
                     // Apply stored patterns
@@ -75,7 +77,7 @@ public class TravelerTask extends BukkitRunnable {
                             banner.addPattern(pattern);
                         }
                     }
-                    
+
                     // Use stored name or fallback to waypoint name
                     if (repositionBannerName != null) {
                         banner.customName(repositionBannerName);
@@ -85,23 +87,23 @@ public class TravelerTask extends BukkitRunnable {
                     banner.update();
                 }
             }
-            
+
             // Add waypoint back to the map at its original location
             final var plugin = org.bukkit.Bukkit.getPluginManager().getPlugin("WaypointsPlugin");
             if (plugin instanceof WaypointsPlugin waypointsPlugin) {
                 waypointsPlugin.getWaypointMap().addWaypoint(repositionWaypoint);
-                
+
                 // Restore hologram if waypoint was active
                 if (repositionWaypoint.isActive()) {
                     waypointsPlugin.getHologramMap().show(repositionWaypoint, player);
                 }
             }
-            
+
             player.sendMessage(net.kyori.adventure.text.Component.text(
-                    "Reposition mode expired. Waypoint restored to original location.", 
+                    "Reposition mode expired. Waypoint restored to original location.",
                     net.kyori.adventure.text.format.NamedTextColor.YELLOW));
         }
-        
+
         super.cancel();
     }
 
@@ -116,27 +118,27 @@ public class TravelerTask extends BukkitRunnable {
     public void setRepositionWaypoint(Waypoint waypoint) {
         this.repositionWaypoint = waypoint;
     }
-    
+
     public org.bukkit.Material getRepositionBannerMaterial() {
         return repositionBannerMaterial;
     }
-    
+
     public void setRepositionBannerMaterial(org.bukkit.Material material) {
         this.repositionBannerMaterial = material;
     }
-    
+
     public java.util.List<org.bukkit.block.banner.Pattern> getRepositionBannerPatterns() {
         return repositionBannerPatterns;
     }
-    
+
     public void setRepositionBannerPatterns(java.util.List<org.bukkit.block.banner.Pattern> patterns) {
         this.repositionBannerPatterns = patterns;
     }
-    
+
     public net.kyori.adventure.text.Component getRepositionBannerName() {
         return repositionBannerName;
     }
-    
+
     public void setRepositionBannerName(net.kyori.adventure.text.Component name) {
         this.repositionBannerName = name;
     }

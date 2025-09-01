@@ -66,6 +66,12 @@ public class Traveler {
         this.charges = charges;
     }
 
+    public void addCharges(int amount, int maxCharges) {
+        if (amount <= 0)
+            return;
+        this.charges = Math.min(maxCharges, this.charges + amount);
+    }
+
     public void setTokens(int tokens) {
         this.tokens = tokens;
     }

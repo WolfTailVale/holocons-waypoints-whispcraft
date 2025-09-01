@@ -5,6 +5,32 @@ charge:
   teleport-waypoint-cost: 1
   regenerate-time: 24000
   particle-effect: null
+  item:
+    enabled: true
+    material: AMETHYST_SHARD
+    name: "Teleport Charge"
+    model-data: 0
+    consume-sound: ENTITY_ITEM_BREAK
+  drops:
+    enabled: true
+    base-chance: 0.04        # 4% base chance
+    looting-bonus: 0.01      # +1% per looting level
+    max-chance: 0.10         # hard cap 10%
+    require-player-damage: true   # Only drop if a player recently dealt damage
+    damage-window-seconds: 15     # Player must have damaged mob within this window
+    blacklist:
+      - BAT
+      - VILLAGER
+      - ARMOR_STAND
+    bosses:
+      ENDER_DRAGON: 5
+      WITHER: 3
+      WARDEN: 1
+    per-chunk-hour-cap: 40   # simple anti-excess control (still farmable)
+    worlds:
+      - world
+      - world_nether
+      - world_the_end
 token:
   capacity: 1
   activate-waypoint-cost: 3

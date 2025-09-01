@@ -13,6 +13,8 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.ProjectileLaunchEvent;
 import org.bukkit.event.inventory.InventoryAction;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -33,6 +35,8 @@ public final class EventListener implements Listener {
     private final HologramMap hologramMap;
     private final TravelerMap travelerMap;
     private final WaypointMap waypointMap;
+    // Tracks last player damage timestamp for mobs (entity UUID -> epoch millis)
+    private final java.util.Map<java.util.UUID, Long> recentDamages = new java.util.concurrent.ConcurrentHashMap<>();
 
     public EventListener(final WaypointsPlugin plugin) {
         this.plugin = plugin;
@@ -190,11 +194,37 @@ public final class EventListener implements Listener {
     public void onPlayerInteract(PlayerInteractEvent event) {
         final var player = event.getPlayer();
         final var task = travelerMap.getTask(player, TravelerTask.class);
-        
+
+        // Handle consuming teleport charge item (right-click air or block while holding
+        // it)
+        if (event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK) {
+            final var item = player.getInventory().getItemInMainHand();
+            if (plugin.getTeleportCharge().isTeleportCharge(item)) {
+                event.setCancelled(true);
+                final var amount = item.getAmount();
+                item.setAmount(0); // remove stack
+                final var traveler = travelerMap.getOrCreateTraveler(player);
+                final var before = traveler.getCharges();
+                traveler.addCharges(amount, plugin.getMaxCharges());
+                final var gained = traveler.getCharges() - before;
+                player.sendMessage(
+                        Component.text("Consumed " + gained + " teleport charge" + (gained == 1 ? "" : "s") + ".",
+                                NamedTextColor.GREEN));
+                final var cfg = plugin.getConfig();
+                final var soundName = cfg.getString("charge.item.consume-sound",
+                        cfg.getString("teleport-charge-item.consume-sound", "ENTITY_ITEM_BREAK"));
+                try {
+                    player.getWorld().playSound(player.getLocation(), org.bukkit.Sound.valueOf(soundName), 1f, 1f);
+                } catch (IllegalArgumentException ignored) {
+                }
+                return; // do not process further interactions when consuming
+            }
+        }
+
         // Handle REPLACEBANNER mode with highest priority
-        if (task != null && task.getType() == TravelerTask.Type.REPLACEBANNER && 
-            event.getAction() == Action.RIGHT_CLICK_BLOCK && event.getHand() == EquipmentSlot.HAND) {
-            
+        if (task != null && task.getType() == TravelerTask.Type.REPLACEBANNER &&
+                event.getAction() == Action.RIGHT_CLICK_BLOCK && event.getHand() == EquipmentSlot.HAND) {
+
             final var clickedBlock = event.getClickedBlock();
             if (clickedBlock != null && waypointMap.isWaypoint(clickedBlock)) {
                 // Cancel the event immediately to prevent any block placement
@@ -204,25 +234,26 @@ public final class EventListener implements Listener {
                 return;
             }
         }
-        
+
         // Handle REPOSITION mode
         if (task != null && task.getType() == TravelerTask.Type.REPOSITION && event.getHand() == EquipmentSlot.HAND) {
             final var clickedBlock = event.getClickedBlock();
-            
+
             // Check for waypoint pickup (shift+right-click empty hand on waypoint banner)
-            if (event.getAction() == Action.RIGHT_CLICK_BLOCK && player.isSneaking() && 
-                player.getInventory().getItemInMainHand().getType() == Material.AIR && 
-                clickedBlock != null && waypointMap.isWaypoint(clickedBlock)) {
-                
+            if (event.getAction() == Action.RIGHT_CLICK_BLOCK && player.isSneaking() &&
+                    player.getInventory().getItemInMainHand().getType() == Material.AIR &&
+                    clickedBlock != null && waypointMap.isWaypoint(clickedBlock)) {
+
                 event.setCancelled(true);
                 handleWaypointPickup(player, clickedBlock, task);
                 return;
             }
-            
-            // Check for waypoint placement (right-click solid block with picked up waypoint)
-            if (event.getAction() == Action.RIGHT_CLICK_BLOCK && !player.isSneaking() && 
-                task.getRepositionWaypoint() != null && clickedBlock != null && clickedBlock.isSolid()) {
-                
+
+            // Check for waypoint placement (right-click solid block with picked up
+            // waypoint)
+            if (event.getAction() == Action.RIGHT_CLICK_BLOCK && !player.isSneaking() &&
+                    task.getRepositionWaypoint() != null && clickedBlock != null && clickedBlock.isSolid()) {
+
                 event.setCancelled(true);
                 handleWaypointPlacement(player, clickedBlock, task);
                 travelerMap.unregisterTask(player);
@@ -369,8 +400,86 @@ public final class EventListener implements Listener {
         }
         travelerMap.unregisterTask(player);
     }
-    
-    private void handleBannerReplacement(Player player, org.bukkit.block.Block clickedBlock, PlayerInteractEvent event) {
+
+    @EventHandler(ignoreCancelled = true)
+    public void onEntityDeath(EntityDeathEvent event) {
+        final var cfg = plugin.getConfig();
+        if (!cfg.getBoolean("charge.drops.enabled", cfg.getBoolean("teleport-charge-drops.enabled", true)))
+            return;
+        final var killer = event.getEntity().getKiller();
+        if (killer == null)
+            return; // only player kills generate charges
+
+        // Enforce recent player damage requirement (any player, not necessarily killer
+        // if configured)
+        if (cfg.getBoolean("charge.drops.require-player-damage",
+                cfg.getBoolean("teleport-charge-drops.require-player-damage", false))) {
+            final var entry = recentDamages.get(event.getEntity().getUniqueId());
+            final var now = System.currentTimeMillis();
+            final var windowMs = cfg.getInt("charge.drops.damage-window-seconds",
+                    cfg.getInt("teleport-charge-drops.damage-window-seconds", 15)) * 1000L;
+            if (entry == null || (now - entry) > windowMs) {
+                return; // no qualified recent damage
+            }
+        }
+
+        final var worldList = cfg.getStringList("charge.drops.worlds");
+        if (!worldList.isEmpty() && !worldList.contains(event.getEntity().getWorld().getName()))
+            return;
+
+        final var type = event.getEntityType();
+        final var blacklist = cfg.getStringList("charge.drops.blacklist");
+        if (blacklist.contains(type.name()))
+            return;
+
+        // Boss guaranteed amounts
+        if (cfg.isConfigurationSection("charge.drops.bosses") &&
+                cfg.getConfigurationSection("charge.drops.bosses").getKeys(false).contains(type.name())) {
+            final var amount = cfg.getInt("charge.drops.bosses." + type.name(), 1);
+            dropTeleportCharges(event.getEntity().getLocation(), amount);
+            return;
+        }
+
+        // Standard roll
+        final double base = cfg.getDouble("charge.drops.base-chance",
+                cfg.getDouble("teleport-charge-drops.base-chance", 0.04));
+        final double lootingBonus = cfg.getDouble("charge.drops.looting-bonus",
+                cfg.getDouble("teleport-charge-drops.looting-bonus", 0.01));
+        final double maxChance = cfg.getDouble("charge.drops.max-chance",
+                cfg.getDouble("teleport-charge-drops.max-chance", 0.10));
+        final int lootingLevel = killer.getInventory().getItemInMainHand()
+                .getEnchantmentLevel(org.bukkit.enchantments.Enchantment.LOOTING);
+        final double chance = Math.min(maxChance, base + lootingBonus * lootingLevel);
+        if (Math.random() <= chance) {
+            dropTeleportCharges(event.getEntity().getLocation(), 1);
+        }
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
+        final var cfg = plugin.getConfig();
+        if (!cfg.getBoolean("charge.drops.require-player-damage",
+                cfg.getBoolean("teleport-charge-drops.require-player-damage", false)))
+            return;
+        if (!(event.getDamager() instanceof Player))
+            return;
+        final var entity = event.getEntity();
+        // Ignore players damaging players
+        if (entity instanceof Player)
+            return;
+        // Track: mob UUID -> (player UUID, timestamp)
+        recentDamages.put(entity.getUniqueId(), System.currentTimeMillis());
+    }
+
+    private void dropTeleportCharges(org.bukkit.Location location, int amount) {
+        if (amount <= 0)
+            return;
+        final var stack = plugin.getTeleportCharge().createCharge(amount);
+        location.getWorld().dropItemNaturally(location, stack);
+    }
+
+    private void handleBannerReplacement(Player player, org.bukkit.block.Block clickedBlock,
+            PlayerInteractEvent event) {
         // Check if player is holding a banner
         final var heldItem = player.getInventory().getItemInMainHand();
         if (!heldItem.getType().name().endsWith("_BANNER")) {
@@ -403,18 +512,19 @@ public final class EventListener implements Listener {
         if (newState instanceof org.bukkit.block.Banner newBanner) {
             // Clear existing patterns first
             newBanner.getPatterns().clear();
-            
-            if (heldItem.hasItemMeta() && heldItem.getItemMeta() instanceof org.bukkit.inventory.meta.BannerMeta bannerMeta) {
+
+            if (heldItem.hasItemMeta()
+                    && heldItem.getItemMeta() instanceof org.bukkit.inventory.meta.BannerMeta bannerMeta) {
                 for (final var pattern : bannerMeta.getPatterns()) {
                     newBanner.addPattern(pattern);
                 }
             }
-            
+
             // Preserve the original waypoint name
             if (originalCustomName != null) {
                 newBanner.customName(originalCustomName);
             }
-            
+
             // Update the banner state
             newBanner.update();
         }
@@ -451,33 +561,33 @@ public final class EventListener implements Listener {
 
     private void handleWaypointPickup(Player player, Block clickedBlock, TravelerTask task) {
         final var waypoint = waypointMap.getNearbyWaypoint(clickedBlock);
-        
+
         // Capture banner data BEFORE removing the banner
         Material bannerMaterial = clickedBlock.getType();
         java.util.List<org.bukkit.block.banner.Pattern> bannerPatterns = java.util.List.of();
         net.kyori.adventure.text.Component bannerName = null;
-        
+
         if (clickedBlock.getState() instanceof org.bukkit.block.Banner banner) {
             bannerPatterns = new java.util.ArrayList<>(banner.getPatterns());
             bannerName = banner.customName();
         }
-        
+
         // Store the waypoint and banner data in the task for later placement
         task.setRepositionWaypoint(waypoint);
         task.setRepositionBannerMaterial(bannerMaterial);
         task.setRepositionBannerPatterns(bannerPatterns);
         task.setRepositionBannerName(bannerName);
-        
+
         // Remove waypoint from the map temporarily
         waypointMap.removeWaypoint(waypoint);
-        
+
         // Hide the hologram
         hologramMap.remove(waypoint);
-        
+
         // Remove the banner block
         clickedBlock.setType(Material.AIR);
-        
-        player.sendMessage(Component.text("Waypoint picked up! Right-click a solid block to place it.", 
+
+        player.sendMessage(Component.text("Waypoint picked up! Right-click a solid block to place it.",
                 NamedTextColor.GREEN));
     }
 
@@ -486,25 +596,26 @@ public final class EventListener implements Listener {
         if (waypoint == null) {
             return;
         }
-        
-        // Determine placement location (on top of clicked block or clicked block if air)
-        final var placementBlock = clickedBlock.getType() == Material.AIR ? clickedBlock : 
-                clickedBlock.getRelative(BlockFace.UP);
-        
+
+        // Determine placement location (on top of clicked block or clicked block if
+        // air)
+        final var placementBlock = clickedBlock.getType() == Material.AIR ? clickedBlock
+                : clickedBlock.getRelative(BlockFace.UP);
+
         // Check if placement location is valid
         if (!placementBlock.getType().isAir()) {
-            player.sendMessage(Component.text("Cannot place waypoint here - location is not empty!", 
+            player.sendMessage(Component.text("Cannot place waypoint here - location is not empty!",
                     NamedTextColor.RED));
             return;
         }
-        
+
         // Check if we're in a valid waypoint world
         final var worldName = placementBlock.getWorld().getName();
         if (!plugin.getWaypointWorlds().contains(worldName)) {
             player.sendMessage(Component.text("Cannot place waypoints in this world!", NamedTextColor.RED));
             return;
         }
-        
+
         // Try to create a new waypoint at the placement location
         // This will automatically check distance from existing waypoints
         final var newWaypoint = waypointMap.createWaypoint(placementBlock);
@@ -512,26 +623,26 @@ public final class EventListener implements Listener {
             player.sendMessage(Component.text("There is already a waypoint nearby!", NamedTextColor.RED));
             return;
         }
-        
+
         // Remove the newly created waypoint since we want to reuse the old one's data
         waypointMap.removeWaypoint(newWaypoint);
-        
+
         // Get stored banner data from the task
         final var bannerMaterial = task.getRepositionBannerMaterial();
         final var bannerPatterns = task.getRepositionBannerPatterns();
         final var bannerName = task.getRepositionBannerName();
-        
+
         // Create a new waypoint with the old waypoint's data at the new location
-        final var repositionedWaypoint = new Waypoint(waypoint.getId(), placementBlock.getLocation(), 
+        final var repositionedWaypoint = new Waypoint(waypoint.getId(), placementBlock.getLocation(),
                 waypoint.getContributors(), waypoint.isActive());
-        
+
         // Add the repositioned waypoint to the map
         waypointMap.addWaypoint(repositionedWaypoint);
-        
+
         // Place the banner block with preserved data
         placementBlock.setType(bannerMaterial != null ? bannerMaterial : Material.WHITE_BANNER);
         final var bannerState = placementBlock.getState();
-        
+
         if (bannerState instanceof org.bukkit.block.Banner banner) {
             // Apply preserved patterns
             if (bannerPatterns != null) {
@@ -539,7 +650,7 @@ public final class EventListener implements Listener {
                     banner.addPattern(pattern);
                 }
             }
-            
+
             // Set waypoint name (preserve original banner name or use waypoint name)
             if (bannerName != null) {
                 banner.customName(bannerName);
@@ -548,18 +659,18 @@ public final class EventListener implements Listener {
             }
             banner.update();
         }
-        
+
         // Show hologram again if active
         if (repositionedWaypoint.isActive()) {
             hologramMap.show(repositionedWaypoint, player);
         }
-        
+
         // Clear the task data to prevent cleanup logic from running
         task.setRepositionWaypoint(null);
         task.setRepositionBannerMaterial(null);
         task.setRepositionBannerPatterns(null);
         task.setRepositionBannerName(null);
-        
+
         player.sendMessage(Component.text("Waypoint placed successfully!", NamedTextColor.GREEN));
     }
 
