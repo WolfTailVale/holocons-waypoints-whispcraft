@@ -154,7 +154,15 @@ Built JAR will be in `build/libs/` as `WhispWaypoints-x.x.x.jar`
 
 ## Changelog
 
-### Version 1.8.0 (Latest)
+### Version 1.8.1 (Latest)
+- 🐛 **Fixed**: Waypoint repositioning issues
+  - Fixed banner material and patterns not being preserved during reposition
+  - Fixed waypoint names showing as "Unnamed Waypoint" after repositioning
+  - Fixed cleanup logic running after successful placement, causing duplicate banners
+  - Fixed conflicting success/failure messages during placement
+  - Enhanced banner data storage during pickup for proper preservation
+
+### Version 1.8.0
 - ✨ **New Feature**: Waypoint repositioning system (`/editwaypoints reposition`)
   - Crouch + right-click with empty hand to pick up waypoints
   - Right-click solid blocks to place waypoints at new locations

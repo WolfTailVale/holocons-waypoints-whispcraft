@@ -452,8 +452,21 @@ public final class EventListener implements Listener {
     private void handleWaypointPickup(Player player, Block clickedBlock, TravelerTask task) {
         final var waypoint = waypointMap.getNearbyWaypoint(clickedBlock);
         
-        // Store the waypoint in the task for later placement
+        // Capture banner data BEFORE removing the banner
+        Material bannerMaterial = clickedBlock.getType();
+        java.util.List<org.bukkit.block.banner.Pattern> bannerPatterns = java.util.List.of();
+        net.kyori.adventure.text.Component bannerName = null;
+        
+        if (clickedBlock.getState() instanceof org.bukkit.block.Banner banner) {
+            bannerPatterns = new java.util.ArrayList<>(banner.getPatterns());
+            bannerName = banner.customName();
+        }
+        
+        // Store the waypoint and banner data in the task for later placement
         task.setRepositionWaypoint(waypoint);
+        task.setRepositionBannerMaterial(bannerMaterial);
+        task.setRepositionBannerPatterns(bannerPatterns);
+        task.setRepositionBannerName(bannerName);
         
         // Remove waypoint from the map temporarily
         waypointMap.removeWaypoint(waypoint);
@@ -503,20 +516,10 @@ public final class EventListener implements Listener {
         // Remove the newly created waypoint since we want to reuse the old one's data
         waypointMap.removeWaypoint(newWaypoint);
         
-        // Get banner information from the original location before we set it up
-        final var originalLocation = waypoint.getLocation();
-        Material bannerMaterial = Material.WHITE_BANNER;
-        java.util.List<org.bukkit.block.banner.Pattern> bannerPatterns = java.util.List.of();
-        net.kyori.adventure.text.Component bannerName = null;
-        
-        // Try to get banner data from saved waypoint location (may still be there)
-        final var originalBlock = originalLocation.getBlock();
-        if (originalBlock.getType().name().endsWith("_BANNER") && 
-            originalBlock.getState() instanceof org.bukkit.block.Banner originalBanner) {
-            bannerMaterial = originalBlock.getType();
-            bannerPatterns = new java.util.ArrayList<>(originalBanner.getPatterns());
-            bannerName = originalBanner.customName();
-        }
+        // Get stored banner data from the task
+        final var bannerMaterial = task.getRepositionBannerMaterial();
+        final var bannerPatterns = task.getRepositionBannerPatterns();
+        final var bannerName = task.getRepositionBannerName();
         
         // Create a new waypoint with the old waypoint's data at the new location
         final var repositionedWaypoint = new Waypoint(waypoint.getId(), placementBlock.getLocation(), 
@@ -526,16 +529,18 @@ public final class EventListener implements Listener {
         waypointMap.addWaypoint(repositionedWaypoint);
         
         // Place the banner block with preserved data
-        placementBlock.setType(bannerMaterial);
+        placementBlock.setType(bannerMaterial != null ? bannerMaterial : Material.WHITE_BANNER);
         final var bannerState = placementBlock.getState();
         
         if (bannerState instanceof org.bukkit.block.Banner banner) {
             // Apply preserved patterns
-            for (final var pattern : bannerPatterns) {
-                banner.addPattern(pattern);
+            if (bannerPatterns != null) {
+                for (final var pattern : bannerPatterns) {
+                    banner.addPattern(pattern);
+                }
             }
             
-            // Set waypoint name (preserve original or use waypoint name)
+            // Set waypoint name (preserve original banner name or use waypoint name)
             if (bannerName != null) {
                 banner.customName(bannerName);
             } else if (repositionedWaypoint.hasName()) {
@@ -548,6 +553,12 @@ public final class EventListener implements Listener {
         if (repositionedWaypoint.isActive()) {
             hologramMap.show(repositionedWaypoint, player);
         }
+        
+        // Clear the task data to prevent cleanup logic from running
+        task.setRepositionWaypoint(null);
+        task.setRepositionBannerMaterial(null);
+        task.setRepositionBannerPatterns(null);
+        task.setRepositionBannerName(null);
         
         player.sendMessage(Component.text("Waypoint placed successfully!", NamedTextColor.GREEN));
     }
