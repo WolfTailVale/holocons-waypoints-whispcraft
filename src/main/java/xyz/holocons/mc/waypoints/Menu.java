@@ -13,6 +13,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
 
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 
 public class Menu implements InventoryHolder {
 
@@ -172,6 +173,23 @@ public class Menu implements InventoryHolder {
                     case CAMP_SLOT -> TeleportTask.Type.CAMP;
                     default -> TeleportTask.Type.WAYPOINT;
                 };
+                
+                // Log GUI-initiated teleportation
+                String destinationType = switch (teleportType) {
+                    case HOME -> "Home";
+                    case CAMP -> "Camp";
+                    case WAYPOINT -> {
+                        final var displayName = clickedItem.getItemMeta().displayName();
+                        if (displayName != null) {
+                            yield "Waypoint '" + PlainTextComponentSerializer.plainText().serialize(displayName) + "'";
+                        } else {
+                            yield "Waypoint";
+                        }
+                    }
+                };
+                plugin.getLogger().info(String.format("[TELEPORT] Player %s (%s) initiated %s teleport via GUI", 
+                        player.getName(), player.getUniqueId(), destinationType));
+                
                 new TeleportTask(plugin, player, teleportType, location);
                 inventory.close();
             }

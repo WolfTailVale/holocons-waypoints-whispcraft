@@ -154,7 +154,16 @@ Built JAR will be in `build/libs/` as `WhispWaypoints-x.x.x.jar`
 
 ## Changelog
 
-### Version 1.8.1 (Latest)
+### Version 1.8.2 (Latest)
+- 📊 **New Feature**: Comprehensive teleportation logging
+  - Logs all teleportation attempts with player details, destination, and coordinates
+  - Tracks teleportation success/failure with specific failure reasons
+  - Logs charge consumption and remaining charges after successful teleports
+  - Monitors player actions that cause teleport failures (movement, damage)
+  - Includes both command-based and GUI-based teleportation tracking
+  - Logs teleportation cancellations and disconnects during teleport
+
+### Version 1.8.1
 - 🐛 **Fixed**: Waypoint repositioning issues
   - Fixed banner material and patterns not being preserved during reposition
   - Fixed waypoint names showing as "Unnamed Waypoint" after repositioning

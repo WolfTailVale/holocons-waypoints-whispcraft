@@ -218,12 +218,16 @@ public class CommandHandler implements TabExecutor {
             type = TeleportTask.Type.CAMP;
             location = traveler.getCamp();
             if (location == null) {
+                plugin.getLogger().info(String.format("[TELEPORT] Player %s (%s) attempted camp teleport but has no camp set", 
+                        player.getName(), player.getUniqueId()));
                 player.sendMessage(Component.text("You don't have a camp!"));
             }
         } else if (destination.equalsIgnoreCase("home")) {
             type = TeleportTask.Type.HOME;
             location = traveler.getHome();
             if (location == null) {
+                plugin.getLogger().info(String.format("[TELEPORT] Player %s (%s) attempted home teleport but has no home set", 
+                        player.getName(), player.getUniqueId()));
                 player.sendMessage(Component.text("You don't have a home!"));
             }
         } else {
@@ -231,6 +235,15 @@ public class CommandHandler implements TabExecutor {
             Predicate<Waypoint> matchesDestination = waypoint -> waypoint.getName().equalsIgnoreCase(destination);
             final var waypoint = waypointMap.getNamedWaypoints().filter(matchesDestination).findAny().orElse(null);
             location = traveler.hasWaypoint(waypoint) ? waypoint.getLocation() : null;
+            if (location == null) {
+                if (waypoint == null) {
+                    plugin.getLogger().info(String.format("[TELEPORT] Player %s (%s) attempted waypoint teleport to '%s' but waypoint does not exist", 
+                            player.getName(), player.getUniqueId(), destination));
+                } else {
+                    plugin.getLogger().info(String.format("[TELEPORT] Player %s (%s) attempted waypoint teleport to '%s' but has not registered this waypoint", 
+                            player.getName(), player.getUniqueId(), destination));
+                }
+            }
         }
         if (location == null) {
             new Menu(plugin, player, Menu.Type.TELEPORT);
