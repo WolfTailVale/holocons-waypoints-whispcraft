@@ -17,6 +17,7 @@ public class TravelerTask extends BukkitRunnable {
         DELETE,
         REMOVETOKEN,
         REPLACEBANNER,
+        REPOSITION,
         SETCAMP,
         SETHOME,
     }
@@ -24,6 +25,7 @@ public class TravelerTask extends BukkitRunnable {
     private final Player player;
     private final Type type;
     private final int expiration;
+    private Waypoint repositionWaypoint; // Holds waypoint data during reposition
 
     public TravelerTask(final WaypointsPlugin plugin, final Player player, final Type type) {
         plugin.getTravelerMap().registerTask(player, this);
@@ -48,7 +50,53 @@ public class TravelerTask extends BukkitRunnable {
         }
     }
 
+    @Override
+    public synchronized void cancel() throws IllegalStateException {
+        // Handle cleanup for REPOSITION mode if waypoint is picked up
+        if (type == Type.REPOSITION && repositionWaypoint != null) {
+            // Restore the waypoint to its original location
+            final var originalLocation = repositionWaypoint.getLocation();
+            final var originalBlock = originalLocation.getBlock();
+            
+            // Only restore if the block is still air (hasn't been replaced by something else)
+            if (originalBlock.getType().isAir()) {
+                // Place a white banner as fallback
+                originalBlock.setType(org.bukkit.Material.WHITE_BANNER);
+                final var bannerState = originalBlock.getState();
+                if (bannerState instanceof org.bukkit.block.Banner banner) {
+                    banner.customName(net.kyori.adventure.text.Component.text(repositionWaypoint.getName()));
+                    banner.update();
+                }
+            }
+            
+            // Add waypoint back to the map at its original location
+            final var plugin = org.bukkit.Bukkit.getPluginManager().getPlugin("WaypointsPlugin");
+            if (plugin instanceof WaypointsPlugin waypointsPlugin) {
+                waypointsPlugin.getWaypointMap().addWaypoint(repositionWaypoint);
+                
+                // Restore hologram if waypoint was active
+                if (repositionWaypoint.isActive()) {
+                    waypointsPlugin.getHologramMap().show(repositionWaypoint, player);
+                }
+            }
+            
+            player.sendMessage(net.kyori.adventure.text.Component.text(
+                    "Reposition mode expired. Waypoint restored to original location.", 
+                    net.kyori.adventure.text.format.NamedTextColor.YELLOW));
+        }
+        
+        super.cancel();
+    }
+
     public Type getType() {
         return type;
+    }
+
+    public Waypoint getRepositionWaypoint() {
+        return repositionWaypoint;
+    }
+
+    public void setRepositionWaypoint(Waypoint waypoint) {
+        this.repositionWaypoint = waypoint;
     }
 }

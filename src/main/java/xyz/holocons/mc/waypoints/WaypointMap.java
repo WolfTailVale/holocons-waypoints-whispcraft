@@ -87,6 +87,10 @@ public class WaypointMap {
         waypoints.remove(waypoint.getChunkKey());
     }
 
+    public void addWaypoint(Waypoint waypoint) {
+        waypoints.put(waypoint.getChunkKey(), waypoint);
+    }
+
     public boolean isWaypoint(Location location) {
         var waypoint = getNearbyWaypoint(location);
         return waypoint != null && waypoint.getLocation().equals(location);

@@ -74,6 +74,9 @@ public class CommandHandler implements TabExecutor {
                         case "REPLACEBANNER" -> {
                             new TravelerTask(plugin, player, TravelerTask.Type.REPLACEBANNER);
                         }
+                        case "REPOSITION" -> {
+                            new TravelerTask(plugin, player, TravelerTask.Type.REPOSITION);
+                        }
                         case "MENU" -> {
                             new Menu(plugin, player, Menu.Type.EDIT);
                         }
@@ -186,7 +189,7 @@ public class CommandHandler implements TabExecutor {
                 case "EDITWAYPOINTS" -> {
                     yield switch (args.length) {
                         case 1 -> {
-                            yield List.of("activate", "delete", "menu", "unsetcamps", "unsethomes", "replacebanner");
+                            yield List.of("activate", "delete", "menu", "unsetcamps", "unsethomes", "replacebanner", "reposition");
                         }
                         default -> List.of();
                     };

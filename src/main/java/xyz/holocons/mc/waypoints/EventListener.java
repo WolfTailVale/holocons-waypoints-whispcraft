@@ -2,6 +2,7 @@ package xyz.holocons.mc.waypoints;
 
 import org.bukkit.Bukkit;
 import org.bukkit.EntityEffect;
+import org.bukkit.Material;
 import org.bukkit.Tag;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
@@ -203,6 +204,31 @@ public final class EventListener implements Listener {
                 return;
             }
         }
+        
+        // Handle REPOSITION mode
+        if (task != null && task.getType() == TravelerTask.Type.REPOSITION && event.getHand() == EquipmentSlot.HAND) {
+            final var clickedBlock = event.getClickedBlock();
+            
+            // Check for waypoint pickup (shift+right-click empty hand on waypoint banner)
+            if (event.getAction() == Action.RIGHT_CLICK_BLOCK && player.isSneaking() && 
+                player.getInventory().getItemInMainHand().getType() == Material.AIR && 
+                clickedBlock != null && waypointMap.isWaypoint(clickedBlock)) {
+                
+                event.setCancelled(true);
+                handleWaypointPickup(player, clickedBlock, task);
+                return;
+            }
+            
+            // Check for waypoint placement (right-click solid block with picked up waypoint)
+            if (event.getAction() == Action.RIGHT_CLICK_BLOCK && !player.isSneaking() && 
+                task.getRepositionWaypoint() != null && clickedBlock != null && clickedBlock.isSolid()) {
+                
+                event.setCancelled(true);
+                handleWaypointPlacement(player, clickedBlock, task);
+                travelerMap.unregisterTask(player);
+                return;
+            }
+        }
 
         if (event.isBlockInHand() || event.getAction() != Action.RIGHT_CLICK_BLOCK
                 || event.getHand() != EquipmentSlot.HAND) {
@@ -333,6 +359,10 @@ public final class EventListener implements Listener {
                 final var tokenRequirement = plugin.getWaypointActivateCost();
                 sendActionBar(player, contributors.size(), tokenRequirement);
             }
+            case REPOSITION -> {
+                // This case is handled earlier in the method for both pickup and placement
+                return;
+            }
             default -> {
                 return;
             }
@@ -417,6 +447,109 @@ public final class EventListener implements Listener {
         }
 
         player.sendMessage(Component.text("Waypoint banner swapped!", NamedTextColor.GREEN));
+    }
+
+    private void handleWaypointPickup(Player player, Block clickedBlock, TravelerTask task) {
+        final var waypoint = waypointMap.getNearbyWaypoint(clickedBlock);
+        
+        // Store the waypoint in the task for later placement
+        task.setRepositionWaypoint(waypoint);
+        
+        // Remove waypoint from the map temporarily
+        waypointMap.removeWaypoint(waypoint);
+        
+        // Hide the hologram
+        hologramMap.remove(waypoint);
+        
+        // Remove the banner block
+        clickedBlock.setType(Material.AIR);
+        
+        player.sendMessage(Component.text("Waypoint picked up! Right-click a solid block to place it.", 
+                NamedTextColor.GREEN));
+    }
+
+    private void handleWaypointPlacement(Player player, Block clickedBlock, TravelerTask task) {
+        final var waypoint = task.getRepositionWaypoint();
+        if (waypoint == null) {
+            return;
+        }
+        
+        // Determine placement location (on top of clicked block or clicked block if air)
+        final var placementBlock = clickedBlock.getType() == Material.AIR ? clickedBlock : 
+                clickedBlock.getRelative(BlockFace.UP);
+        
+        // Check if placement location is valid
+        if (!placementBlock.getType().isAir()) {
+            player.sendMessage(Component.text("Cannot place waypoint here - location is not empty!", 
+                    NamedTextColor.RED));
+            return;
+        }
+        
+        // Check if we're in a valid waypoint world
+        final var worldName = placementBlock.getWorld().getName();
+        if (!plugin.getWaypointWorlds().contains(worldName)) {
+            player.sendMessage(Component.text("Cannot place waypoints in this world!", NamedTextColor.RED));
+            return;
+        }
+        
+        // Try to create a new waypoint at the placement location
+        // This will automatically check distance from existing waypoints
+        final var newWaypoint = waypointMap.createWaypoint(placementBlock);
+        if (newWaypoint == null) {
+            player.sendMessage(Component.text("There is already a waypoint nearby!", NamedTextColor.RED));
+            return;
+        }
+        
+        // Remove the newly created waypoint since we want to reuse the old one's data
+        waypointMap.removeWaypoint(newWaypoint);
+        
+        // Get banner information from the original location before we set it up
+        final var originalLocation = waypoint.getLocation();
+        Material bannerMaterial = Material.WHITE_BANNER;
+        java.util.List<org.bukkit.block.banner.Pattern> bannerPatterns = java.util.List.of();
+        net.kyori.adventure.text.Component bannerName = null;
+        
+        // Try to get banner data from saved waypoint location (may still be there)
+        final var originalBlock = originalLocation.getBlock();
+        if (originalBlock.getType().name().endsWith("_BANNER") && 
+            originalBlock.getState() instanceof org.bukkit.block.Banner originalBanner) {
+            bannerMaterial = originalBlock.getType();
+            bannerPatterns = new java.util.ArrayList<>(originalBanner.getPatterns());
+            bannerName = originalBanner.customName();
+        }
+        
+        // Create a new waypoint with the old waypoint's data at the new location
+        final var repositionedWaypoint = new Waypoint(waypoint.getId(), placementBlock.getLocation(), 
+                waypoint.getContributors(), waypoint.isActive());
+        
+        // Add the repositioned waypoint to the map
+        waypointMap.addWaypoint(repositionedWaypoint);
+        
+        // Place the banner block with preserved data
+        placementBlock.setType(bannerMaterial);
+        final var bannerState = placementBlock.getState();
+        
+        if (bannerState instanceof org.bukkit.block.Banner banner) {
+            // Apply preserved patterns
+            for (final var pattern : bannerPatterns) {
+                banner.addPattern(pattern);
+            }
+            
+            // Set waypoint name (preserve original or use waypoint name)
+            if (bannerName != null) {
+                banner.customName(bannerName);
+            } else if (repositionedWaypoint.hasName()) {
+                banner.customName(Component.text(repositionedWaypoint.getName()));
+            }
+            banner.update();
+        }
+        
+        // Show hologram again if active
+        if (repositionedWaypoint.isActive()) {
+            hologramMap.show(repositionedWaypoint, player);
+        }
+        
+        player.sendMessage(Component.text("Waypoint placed successfully!", NamedTextColor.GREEN));
     }
 
     private static void sendActionBar(Player player, int contributorsSize, int tokenRequirement) {
