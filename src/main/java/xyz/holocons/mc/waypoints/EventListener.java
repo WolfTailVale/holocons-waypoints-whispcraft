@@ -492,6 +492,12 @@ public final class EventListener implements Listener {
         if (Math.random() * 100 <= totalChance) {
             dropTeleportCharges(event.getEntity().getLocation(), 1);
         }
+
+        // Token drop calculation (separate roll, very rare)
+        final double tokenDropChance = cfg.getDouble("token.drop-percentage", 0.005);
+        if (Math.random() * 100 <= tokenDropChance) {
+            dropWaypointToken(event.getEntity().getLocation());
+        }
     }
 
     @EventHandler(ignoreCancelled = true)
@@ -519,6 +525,11 @@ public final class EventListener implements Listener {
         }
         
         final var stack = plugin.getTeleportCharge().createCharge(amount);
+        location.getWorld().dropItemNaturally(location, stack);
+    }
+
+    private void dropWaypointToken(org.bukkit.Location location) {
+        final var stack = plugin.getToken().createToken(1);
         location.getWorld().dropItemNaturally(location, stack);
     }
 

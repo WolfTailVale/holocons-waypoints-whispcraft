@@ -39,6 +39,8 @@ public final class WaypointsPlugin extends JavaPlugin {
         getCommand("editwaypoints").setExecutor(commandHandler);
         getCommand("setcamp").setExecutor(commandHandler);
         getCommand("camp").setExecutor(commandHandler);
+        getCommand("sethome").setExecutor(commandHandler);
+        getCommand("home").setExecutor(commandHandler);
         getCommand("unsetcamp").setExecutor(commandHandler);
         getCommand("reloadwaypoints").setExecutor(commandHandler);
         getCommand("registerbanner").setExecutor(commandHandler);
@@ -108,7 +110,11 @@ public final class WaypointsPlugin extends JavaPlugin {
     }
 
     public int getWaypointTeleportCost() {
-        return config.getInt("charge.teleport-waypoint-cost");
+        return config.getInt("teleport.teleport-waypoint-cost", 1);
+    }
+
+    public int getInterWorldTeleportCost() {
+        return config.getInt("teleport.inter-world-cost", 2);
     }
 
     public int getRegenerateChargeTime() {

@@ -39,7 +39,11 @@ public class TeleportTask extends BukkitRunnable {
         this.cost = switch (type) {
             case CAMP -> 0;  // Free camp teleport
             case HOME -> 0;  // Free home teleport
-            case WAYPOINT -> plugin.getWaypointTeleportCost();
+            case WAYPOINT -> {
+                // Check if this is an inter-world teleport
+                final boolean isInterWorld = !player.getWorld().equals(destination.getWorld());
+                yield isInterWorld ? plugin.getInterWorldTeleportCost() : plugin.getWaypointTeleportCost();
+            }
         };
         this.destination = toXZCenterLocation(destination);
         this.destinationName = getDestinationName(destination, type);
@@ -48,9 +52,15 @@ public class TeleportTask extends BukkitRunnable {
         this.key = new NamespacedKey(plugin, Integer.toString(taskId));
 
         // Log teleportation attempt
+        final boolean isInterWorld = !player.getWorld().equals(destination.getWorld());
+        final String teleportInfo = type == Type.WAYPOINT && isInterWorld 
+            ? String.format("%s teleport (INTER-WORLD: %s → %s)", type.name().toLowerCase(), 
+                           player.getWorld().getName(), destination.getWorld().getName())
+            : type.name().toLowerCase() + " teleport";
+            
         plugin.getLogger().info(String.format(
-                "[TELEPORT] Player %s (%s) initiated %s teleport to %s (World: %s, Coords: %.1f, %.1f, %.1f) - Cost: %d charges",
-                player.getName(), player.getUniqueId(), type.name().toLowerCase(), destinationName,
+                "[TELEPORT] Player %s (%s) initiated %s to %s (World: %s, Coords: %.1f, %.1f, %.1f) - Cost: %d charges",
+                player.getName(), player.getUniqueId(), teleportInfo, destinationName,
                 destination.getWorld().getName(), destination.getX(), destination.getY(), destination.getZ(), cost));
 
         final var bossBar = Bukkit.createBossBar(key, "Teleporting...", BarColor.GREEN, BarStyle.SEGMENTED_20);
@@ -108,7 +118,9 @@ public class TeleportTask extends BukkitRunnable {
                         "[TELEPORT] Player %s (%s) teleportation to %s FAILED - Reason: insufficient charges (has %d, needs %d)",
                         player.getName(), player.getUniqueId(), destinationName, charges, cost));
 
-                player.sendMessage("Teleportation failed...");
+                player.sendMessage(net.kyori.adventure.text.Component.text(
+                        "Teleportation failed - not enough charges! You have " + charges + " but need " + cost + ".",
+                        net.kyori.adventure.text.format.NamedTextColor.RED));
             }
         }
     }

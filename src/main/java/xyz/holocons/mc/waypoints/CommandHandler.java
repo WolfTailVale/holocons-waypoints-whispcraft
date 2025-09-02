@@ -50,12 +50,6 @@ public class CommandHandler implements TabExecutor {
                         case "TELEPORT" -> {
                             teleport(player, String.join(" ", Arrays.copyOfRange(args, 1, args.length)));
                         }
-                        case "TOKENDEBUG" -> {
-                            debugToken(player);
-                        }
-                        case "TOKENREPAIR" -> {
-                            repairHeldToken(player);
-                        }
                         case "WALLET" -> {
                             showWallet(player);
                         }
@@ -99,6 +93,12 @@ public class CommandHandler implements TabExecutor {
                 }
                 case "CAMP" -> {
                     teleport(player, "camp");
+                }
+                case "SETHOME" -> {
+                    new TravelerTask(plugin, player, TravelerTask.Type.SETHOME);
+                }
+                case "HOME" -> {
+                    teleport(player, "home");
                 }
                 case "UNSETCAMP" -> {
                     unsetCamp(player);
@@ -188,8 +188,8 @@ public class CommandHandler implements TabExecutor {
                 case "WAYPOINTS" -> {
                     yield switch (args.length) {
                         case 1 -> {
-                            yield List.of("create", "removetoken", "setcamp", "sethome", "teleport", "tokendebug",
-                                    "tokenrepair", "wallet");
+                            yield List.of("create", "removetoken", "setcamp", "sethome", "teleport",
+                                    "wallet");
                         }
                         case 2 -> {
                             if (args[0].equalsIgnoreCase("teleport")) {
@@ -282,29 +282,6 @@ public class CommandHandler implements TabExecutor {
         } else {
             new TeleportTask(plugin, player, type, location);
         }
-    }
-
-    private void debugToken(Player player) {
-        final var item = player.getInventory().getItemInMainHand();
-        final boolean isToken = plugin.isToken(item);
-        Integer cmd = null;
-        if (item != null && item.hasItemMeta() && item.getItemMeta().hasCustomModelData()) {
-            cmd = item.getItemMeta().getCustomModelData();
-        }
-        player.sendMessage(Component.text("Token Debug -> isToken=" + isToken + ", customModelData=" + cmd +
-                (cmd == null ? " (no CMD)" : cmd == Token.MODEL_DATA ? " (expected)" : " (unexpected)"),
-                NamedTextColor.AQUA));
-    }
-
-    private void repairHeldToken(Player player) {
-        final var item = player.getInventory().getItemInMainHand();
-        if (item == null || item.getType() != Material.PAPER) {
-            player.sendMessage(Component.text("Hold a potential token (paper) first.", NamedTextColor.RED));
-            return;
-        }
-        final boolean repaired = plugin.getToken().repairToken(item);
-        player.sendMessage(Component.text(repaired ? "Token repaired." : "No changes needed.",
-                repaired ? NamedTextColor.GREEN : NamedTextColor.YELLOW));
     }
 
     private void setCamp(Player player) {

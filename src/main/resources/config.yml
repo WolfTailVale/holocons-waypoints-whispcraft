@@ -22,10 +22,12 @@ charge:
     name: "Teleport Charge"
 token:
   activate-waypoint-cost: 3
+  drop-percentage: 0.005
 teleport:
   wait-time: 120
   particle-effect: null
   teleport-waypoint-cost: 1
+  inter-world-cost: 2
 world:
   home:
     - world
