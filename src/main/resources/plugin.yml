@@ -39,6 +39,10 @@ commands:
     usage: /givewptoken [amount]
     permission: waypoints.staff
     description: Give yourself waypoint tokens
+  givewpcharge:
+    usage: /givewpcharge [amount]
+    permission: waypoints.staff
+    description: Give yourself teleport charges
 
 permissions:
   waypoints.player:

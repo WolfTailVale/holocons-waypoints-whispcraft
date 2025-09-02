@@ -37,10 +37,6 @@ public class TravelerMap {
         if (travelerMap != null) {
             travelers.putAll(travelerMap);
         }
-
-        for (var player : Bukkit.getOnlinePlayers()) {
-            getOrCreateTraveler(player).startRegenCharge(plugin);
-        }
     }
 
     public void saveTravelers(WaypointsPlugin plugin) throws IOException {
@@ -56,7 +52,6 @@ public class TravelerMap {
     }
 
     public void clearTravelers() {
-        travelers.values().forEach(Traveler::stopRegenCharge);
         travelers.clear();
         tasks.values().forEach(BukkitRunnable::cancel);
         tasks.clear();

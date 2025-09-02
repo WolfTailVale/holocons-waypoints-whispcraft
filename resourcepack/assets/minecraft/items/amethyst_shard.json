@@ -1,0 +1,19 @@
+{
+    "model": {
+        "type": "range_dispatch",
+        "property": "custom_model_data",
+        "fallback": {
+            "type": "model",
+            "model": "item/amethyst_shard"
+        },
+        "entries": [
+            {
+                "threshold": 1001,
+                "model": {
+                    "type": "model",
+                    "model": "item/whispwaypoints_charge"
+                }
+            }
+        ]
+    }
+}

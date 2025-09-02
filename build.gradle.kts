@@ -51,7 +51,8 @@ dependencies {
     // Local fallback for ProtocolLib: place the desired jar at libs/ProtocolLib.jar
     val protocolLibPaths = listOf(
         rootProject.file("libs/ProtocolLib.jar"),
-        rootProject.file("ProtocolLib.jar")
+        rootProject.file("ProtocolLib.jar"),
+        rootProject.file("dependencies/ProtocolLib.jar")
     )
     val protocolLibLocal = protocolLibPaths.firstOrNull { it.exists() }
     if (protocolLibLocal != null) {

@@ -1,6 +1,7 @@
 package xyz.holocons.mc.waypoints;
 
 import org.bukkit.Bukkit;
+import org.bukkit.Chunk;
 import org.bukkit.EntityEffect;
 import org.bukkit.Material;
 import org.bukkit.Tag;
@@ -37,6 +38,8 @@ public final class EventListener implements Listener {
     private final WaypointMap waypointMap;
     // Tracks last player damage timestamp for mobs (entity UUID -> epoch millis)
     private final java.util.Map<java.util.UUID, Long> recentDamages = new java.util.concurrent.ConcurrentHashMap<>();
+    // Tracks charge drops per chunk with timestamps for sliding window anti-farm
+    private final java.util.Map<Long, java.util.List<Long>> chunkDropTimestamps = new java.util.concurrent.ConcurrentHashMap<>();
 
     public EventListener(final WaypointsPlugin plugin) {
         this.plugin = plugin;
@@ -123,10 +126,16 @@ public final class EventListener implements Listener {
         travelerMap.removeWaypoint(waypoint);
 
         // Refund tokens to contributors
-        final var maxTokens = plugin.getMaxTokens();
         for (final var uniqueId : waypoint.getContributors()) {
             final var traveler = travelerMap.getOrCreateTraveler(uniqueId);
-            traveler.setTokens(Math.min(traveler.getTokens() + 1, maxTokens));
+            traveler.setTokens(traveler.getTokens() + 1);
+            
+            // Send feedback to online contributors
+            final var contributorPlayer = plugin.getServer().getPlayer(uniqueId);
+            if (contributorPlayer != null) {
+                contributorPlayer.sendMessage(
+                    Component.text("A waypoint token was returned to your wallet.", NamedTextColor.BLUE));
+            }
         }
 
         hologramMap.remove(waypoint);
@@ -195,17 +204,18 @@ public final class EventListener implements Listener {
         final var player = event.getPlayer();
         final var task = travelerMap.getTask(player, TravelerTask.class);
 
-        // Handle consuming teleport charge item (right-click air or block while holding
-        // it)
+        // Handle consuming teleport charge item (right-click air or block while holding it)
         if (event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK) {
             final var item = player.getInventory().getItemInMainHand();
+            
+            // Handle teleport charge consumption
             if (plugin.getTeleportCharge().isTeleportCharge(item)) {
                 event.setCancelled(true);
                 final var amount = item.getAmount();
                 item.setAmount(0); // remove stack
                 final var traveler = travelerMap.getOrCreateTraveler(player);
                 final var before = traveler.getCharges();
-                traveler.addCharges(amount, plugin.getMaxCharges());
+                traveler.addCharges(amount);
                 final var gained = traveler.getCharges() - before;
                 player.sendMessage(
                         Component.text("Consumed " + gained + " teleport charge" + (gained == 1 ? "" : "s") + ".",
@@ -215,6 +225,23 @@ public final class EventListener implements Listener {
                         cfg.getString("teleport-charge-item.consume-sound", "ENTITY_ITEM_BREAK"));
                 try {
                     player.getWorld().playSound(player.getLocation(), org.bukkit.Sound.valueOf(soundName), 1f, 1f);
+                } catch (IllegalArgumentException ignored) {
+                }
+                return; // do not process further interactions when consuming
+            }
+            
+            // Handle token consumption
+            if (plugin.isToken(item)) {
+                event.setCancelled(true);
+                final var amount = item.getAmount();
+                item.setAmount(0); // remove stack
+                final var traveler = travelerMap.getOrCreateTraveler(player);
+                traveler.setTokens(traveler.getTokens() + amount);
+                player.sendMessage(
+                        Component.text("Consumed " + amount + " waypoint token" + (amount == 1 ? "" : "s") + ".",
+                                NamedTextColor.BLUE));
+                try {
+                    player.getWorld().playSound(player.getLocation(), org.bukkit.Sound.ENTITY_ITEM_BREAK, 1f, 1f);
                 } catch (IllegalArgumentException ignored) {
                 }
                 return; // do not process further interactions when consuming
@@ -267,7 +294,6 @@ public final class EventListener implements Listener {
         }
 
         final var clickedBlock = event.getClickedBlock();
-        final var isHoldingToken = plugin.isToken(player.getInventory().getItemInMainHand());
 
         if (!waypointMap.isWaypoint(clickedBlock)) {
             final var destinationBlock = clickedBlock.isPassable() ? clickedBlock
@@ -299,28 +325,34 @@ public final class EventListener implements Listener {
         final var waypoint = waypointMap.getNearbyWaypoint(clickedBlock);
 
         if (task == null) {
-            // Handle direct token consumption when right-clicking waypoints
-            if (isHoldingToken && !waypoint.isActive()) {
+            // Handle wallet token usage when right-clicking inactive waypoints
+            if (!waypoint.isActive()) {
                 event.setCancelled(true);
-
+                
+                final var traveler = travelerMap.getOrCreateTraveler(player);
                 final var tokenRequirement = plugin.getWaypointActivateCost();
                 final var contributors = waypoint.getContributors();
-                final var playerInventory = player.getInventory();
-
-                // Consume the physical token
-                player.playEffect(EntityEffect.BREAK_EQUIPMENT_MAIN_HAND);
-                playerInventory.setItemInMainHand(playerInventory.getItemInMainHand().subtract());
-
+                
+                // Check if player has tokens in wallet
+                if (traveler.getTokens() <= 0) {
+                    player.sendMessage(Component.text("You need tokens in your wallet to contribute! Use '/waypoints wallet' to check your balance.", NamedTextColor.RED));
+                    return;
+                }
+                
+                // Deduct token from wallet
+                traveler.setTokens(traveler.getTokens() - 1);
+                
                 // Add contribution to waypoint
                 contributors.add(player.getUniqueId());
-                player.sendMessage(Component.text("You added a token!", NamedTextColor.BLUE));
-
+                player.sendMessage(Component.text("You added a token! (" + traveler.getTokens() + " tokens remaining in wallet)", NamedTextColor.BLUE));
+                
                 // Check if waypoint should activate
                 if (contributors.size() >= tokenRequirement) {
                     waypoint.activate();
                     hologramMap.updateTrackedPlayers(waypoint, player);
+                    player.sendMessage(Component.text("Waypoint activated!", NamedTextColor.GREEN));
                 }
-
+                
                 sendActionBar(player, contributors.size(), tokenRequirement);
                 return;
             }
@@ -357,20 +389,25 @@ public final class EventListener implements Listener {
                     return;
                 }
                 waypointMap.removeWaypoint(waypoint);
-                final var maxTokens = plugin.getMaxTokens();
                 for (final var uniqueId : waypoint.getContributors()) {
                     final var traveler = travelerMap.getOrCreateTraveler(uniqueId);
-                    traveler.setTokens(Math.min(traveler.getTokens() + 1, maxTokens));
+                    traveler.setTokens(traveler.getTokens() + 1);
                 }
                 hologramMap.remove(waypoint);
             }
             case DELETE -> {
                 waypointMap.removeWaypoint(waypoint);
                 travelerMap.removeWaypoint(waypoint);
-                final var maxTokens = plugin.getMaxTokens();
                 for (final var uniqueId : waypoint.getContributors()) {
                     final var traveler = travelerMap.getOrCreateTraveler(uniqueId);
-                    traveler.setTokens(Math.min(traveler.getTokens() + 1, maxTokens));
+                    traveler.setTokens(traveler.getTokens() + 1);
+                    
+                    // Send feedback to online contributors
+                    final var contributorPlayer = plugin.getServer().getPlayer(uniqueId);
+                    if (contributorPlayer != null) {
+                        contributorPlayer.sendMessage(
+                            Component.text("A waypoint token was returned to your wallet.", NamedTextColor.BLUE));
+                    }
                 }
                 hologramMap.remove(waypoint);
             }
@@ -381,10 +418,9 @@ public final class EventListener implements Listener {
                 final var uniqueId = player.getUniqueId();
                 final var contributors = waypoint.getContributors();
                 if (contributors.contains(uniqueId)) {
-                    player.sendMessage(Component.text("You removed a token!", NamedTextColor.BLUE));
-                    final var maxTokens = plugin.getMaxTokens();
+                    player.sendMessage(Component.text("A waypoint token was returned to your wallet!", NamedTextColor.BLUE));
                     final var traveler = travelerMap.getOrCreateTraveler(player);
-                    traveler.setTokens(Math.min(traveler.getTokens() + 1, maxTokens));
+                    traveler.setTokens(traveler.getTokens() + 1);
                     contributors.remove(uniqueId);
                 }
                 final var tokenRequirement = plugin.getWaypointActivateCost();
@@ -404,53 +440,56 @@ public final class EventListener implements Listener {
     @EventHandler(ignoreCancelled = true)
     public void onEntityDeath(EntityDeathEvent event) {
         final var cfg = plugin.getConfig();
-        if (!cfg.getBoolean("charge.drops.enabled", cfg.getBoolean("teleport-charge-drops.enabled", true)))
-            return;
         final var killer = event.getEntity().getKiller();
         if (killer == null)
             return; // only player kills generate charges
 
-        // Enforce recent player damage requirement (any player, not necessarily killer
-        // if configured)
-        if (cfg.getBoolean("charge.drops.require-player-damage",
-                cfg.getBoolean("teleport-charge-drops.require-player-damage", false))) {
+        // Check if player damage is required
+        if (cfg.getBoolean("charge.player-damage-req", true)) {
             final var entry = recentDamages.get(event.getEntity().getUniqueId());
-            final var now = System.currentTimeMillis();
-            final var windowMs = cfg.getInt("charge.drops.damage-window-seconds",
-                    cfg.getInt("teleport-charge-drops.damage-window-seconds", 15)) * 1000L;
-            if (entry == null || (now - entry) > windowMs) {
-                return; // no qualified recent damage
+            if (entry == null) {
+                return; // no recent player damage tracked
             }
         }
 
-        final var worldList = cfg.getStringList("charge.drops.worlds");
+        // Check world whitelist
+        final var worldList = cfg.getStringList("charge.worlds");
         if (!worldList.isEmpty() && !worldList.contains(event.getEntity().getWorld().getName()))
             return;
 
         final var type = event.getEntityType();
-        final var blacklist = cfg.getStringList("charge.drops.blacklist");
-        if (blacklist.contains(type.name()))
+        
+        // Check mob blacklist
+        final var blacklist = cfg.getStringList("charge.mob-blacklist");
+        if (blacklist != null && blacklist.contains(type.name().toLowerCase()))
             return;
 
-        // Boss guaranteed amounts
-        if (cfg.isConfigurationSection("charge.drops.bosses") &&
-                cfg.getConfigurationSection("charge.drops.bosses").getKeys(false).contains(type.name())) {
-            final var amount = cfg.getInt("charge.drops.bosses." + type.name(), 1);
-            dropTeleportCharges(event.getEntity().getLocation(), amount);
+        // Handle boss drops
+        final var bossList = cfg.getStringList("charge.boss-mob-list");
+        if (bossList != null && bossList.contains(type.name().toLowerCase())) {
+            final var bossDropChance = cfg.getInt("charge.boss-drop-percentage", 100);
+            if (Math.random() * 100 <= bossDropChance) {
+                final var amount = cfg.getInt("charge.boss-drop-amount", 10);
+                dropTeleportCharges(event.getEntity().getLocation(), amount);
+            }
             return;
         }
 
-        // Standard roll
-        final double base = cfg.getDouble("charge.drops.base-chance",
-                cfg.getDouble("teleport-charge-drops.base-chance", 0.04));
-        final double lootingBonus = cfg.getDouble("charge.drops.looting-bonus",
-                cfg.getDouble("teleport-charge-drops.looting-bonus", 0.01));
-        final double maxChance = cfg.getDouble("charge.drops.max-chance",
-                cfg.getDouble("teleport-charge-drops.max-chance", 0.10));
+        // Check anti-farm limits if enabled
+        if (cfg.getBoolean("charge.anti-farm", true)) {
+            if (!canDropInChunk(event.getEntity().getLocation())) {
+                return; // chunk limit reached
+            }
+        }
+
+        // Standard drop calculation
+        final double baseChance = cfg.getDouble("charge.drop-percentage", 5.0);
+        final double lootingBonus = cfg.getDouble("charge.looting-bonus-percentage", 1.0);
         final int lootingLevel = killer.getInventory().getItemInMainHand()
                 .getEnchantmentLevel(org.bukkit.enchantments.Enchantment.LOOTING);
-        final double chance = Math.min(maxChance, base + lootingBonus * lootingLevel);
-        if (Math.random() <= chance) {
+        final double totalChance = baseChance + (lootingBonus * lootingLevel);
+        
+        if (Math.random() * 100 <= totalChance) {
             dropTeleportCharges(event.getEntity().getLocation(), 1);
         }
     }
@@ -458,8 +497,7 @@ public final class EventListener implements Listener {
     @EventHandler(ignoreCancelled = true)
     public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
         final var cfg = plugin.getConfig();
-        if (!cfg.getBoolean("charge.drops.require-player-damage",
-                cfg.getBoolean("teleport-charge-drops.require-player-damage", false)))
+        if (!cfg.getBoolean("charge.player-damage-req", true))
             return;
         if (!(event.getDamager() instanceof Player))
             return;
@@ -467,15 +505,51 @@ public final class EventListener implements Listener {
         // Ignore players damaging players
         if (entity instanceof Player)
             return;
-        // Track: mob UUID -> (player UUID, timestamp)
+        // Track: mob UUID -> timestamp (simplified tracking)
         recentDamages.put(entity.getUniqueId(), System.currentTimeMillis());
     }
 
     private void dropTeleportCharges(org.bukkit.Location location, int amount) {
         if (amount <= 0)
             return;
+        
+        // Track the drop for anti-farm purposes
+        if (plugin.getConfig().getBoolean("charge.anti-farm", true)) {
+            trackChunkDrop(location);
+        }
+        
         final var stack = plugin.getTeleportCharge().createCharge(amount);
         location.getWorld().dropItemNaturally(location, stack);
+    }
+
+    /**
+     * Check if a chunk can still have drops based on the sliding window limit
+     */
+    private boolean canDropInChunk(org.bukkit.Location location) {
+        final var chunkKey = Chunk.getChunkKey(location);
+        final var now = System.currentTimeMillis();
+        final var windowMs = 60 * 60 * 1000L; // 1 hour in milliseconds
+        final var maxDrops = plugin.getConfig().getInt("charge.drops-per-chunk-per-hour", 15);
+        
+        // Get existing timestamps for this chunk
+        final var timestamps = chunkDropTimestamps.computeIfAbsent(chunkKey, k -> new java.util.ArrayList<>());
+        
+        // Remove old timestamps outside the sliding window
+        timestamps.removeIf(timestamp -> (now - timestamp) > windowMs);
+        
+        // Check if we're under the limit
+        return timestamps.size() < maxDrops;
+    }
+
+    /**
+     * Track a drop in the chunk's timestamp list
+     */
+    private void trackChunkDrop(org.bukkit.Location location) {
+        final var chunkKey = Chunk.getChunkKey(location);
+        final var now = System.currentTimeMillis();
+        
+        final var timestamps = chunkDropTimestamps.computeIfAbsent(chunkKey, k -> new java.util.ArrayList<>());
+        timestamps.add(now);
     }
 
     private void handleBannerReplacement(Player player, org.bukkit.block.Block clickedBlock,
@@ -681,7 +755,6 @@ public final class EventListener implements Listener {
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
         final var player = event.getPlayer();
-        travelerMap.getOrCreateTraveler(player).startRegenCharge(plugin);
 
         // Show holograms for all camp banners in loaded chunks
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
@@ -703,7 +776,6 @@ public final class EventListener implements Listener {
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
         final var player = event.getPlayer();
-        travelerMap.getOrCreateTraveler(player).stopRegenCharge();
         travelerMap.unregisterTask(player);
         hologramMap.remove(player);
     }

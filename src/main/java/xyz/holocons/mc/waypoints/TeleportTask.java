@@ -37,8 +37,8 @@ public class TeleportTask extends BukkitRunnable {
         this.player = player;
         this.traveler = plugin.getTravelerMap().getOrCreateTraveler(player);
         this.cost = switch (type) {
-            case CAMP -> plugin.getCampTeleportCost();
-            case HOME -> plugin.getHomeTeleportCost();
+            case CAMP -> 0;  // Free camp teleport
+            case HOME -> 0;  // Free home teleport
             case WAYPOINT -> plugin.getWaypointTeleportCost();
         };
         this.destination = toXZCenterLocation(destination);
@@ -58,9 +58,6 @@ public class TeleportTask extends BukkitRunnable {
         bossBar.addPlayer(player);
         Bukkit.getScheduler().scheduleSyncDelayedTask(plugin, () -> {
             removeBossBar(key);
-            if (player.isOnline()) {
-                traveler.startRegenCharge(plugin);
-            }
         }, teleportWaitTime + 2);
     }
 

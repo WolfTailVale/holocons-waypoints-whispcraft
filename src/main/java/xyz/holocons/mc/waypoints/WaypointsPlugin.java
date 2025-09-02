@@ -43,6 +43,7 @@ public final class WaypointsPlugin extends JavaPlugin {
         getCommand("reloadwaypoints").setExecutor(commandHandler);
         getCommand("registerbanner").setExecutor(commandHandler);
         getCommand("givewptoken").setExecutor(commandHandler);
+        getCommand("givewpcharge").setExecutor(commandHandler);
         final var eventListener = new EventListener(this);
         Bukkit.getPluginManager().registerEvents(eventListener, this);
     }

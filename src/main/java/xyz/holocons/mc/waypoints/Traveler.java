@@ -3,8 +3,6 @@ package xyz.holocons.mc.waypoints;
 import java.util.BitSet;
 
 import org.bukkit.Location;
-import org.bukkit.scheduler.BukkitRunnable;
-import org.bukkit.scheduler.BukkitTask;
 
 public class Traveler {
 
@@ -13,7 +11,6 @@ public class Traveler {
     private Location home;
     private Location camp;
     private BitSet waypoints;
-    private BukkitTask regenChargeTask;
 
     public Traveler(int charges, int tokens, Location home, Location camp, BitSet waypoints) {
         this.charges = charges;
@@ -21,7 +18,6 @@ public class Traveler {
         this.home = home;
         this.camp = camp;
         this.waypoints = waypoints != null ? waypoints : new BitSet();
-        this.regenChargeTask = null;
     }
 
     public int getCharges() {
@@ -66,10 +62,10 @@ public class Traveler {
         this.charges = charges;
     }
 
-    public void addCharges(int amount, int maxCharges) {
+    public void addCharges(int amount) {
         if (amount <= 0)
             return;
-        this.charges = Math.min(maxCharges, this.charges + amount);
+        this.charges += amount;
     }
 
     public void setTokens(int tokens) {
@@ -82,32 +78,5 @@ public class Traveler {
 
     public void setCamp(Location camp) {
         this.camp = camp;
-    }
-
-    public void startRegenCharge(WaypointsPlugin plugin) {
-        if (regenChargeTask == null || regenChargeTask.isCancelled()) {
-            final var traveler = this;
-            final var maxCharges = plugin.getMaxCharges();
-            final var period = plugin.getRegenerateChargeTime();
-
-            regenChargeTask = new BukkitRunnable() {
-
-                @Override
-                public void run() {
-                    final var newCharges = Math.min(maxCharges, traveler.getCharges() + 1);
-                    traveler.setCharges(newCharges);
-                    if (newCharges == maxCharges) {
-                        cancel();
-                    }
-                }
-            }.runTaskTimer(plugin, period, period);
-        }
-    }
-
-    public void stopRegenCharge() {
-        if (regenChargeTask != null) {
-            regenChargeTask.cancel();
-            regenChargeTask = null;
-        }
     }
 }

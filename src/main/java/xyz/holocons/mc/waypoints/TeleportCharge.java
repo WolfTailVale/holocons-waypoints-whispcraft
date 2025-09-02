@@ -15,12 +15,14 @@ import net.kyori.adventure.text.format.TextDecoration;
  */
 public final class TeleportCharge {
 
+    public static final int MODEL_DATA = 1001; // Central constant for resource pack mapping
     private final WaypointsPlugin plugin;
     private final NamespacedKey key;
 
     public TeleportCharge(WaypointsPlugin plugin) {
         this.plugin = plugin;
         this.key = new NamespacedKey(plugin, "teleport_charge");
+        plugin.getLogger().info("Registering teleport charge with custom model data: " + MODEL_DATA);
     }
 
     public ItemStack createCharge(int amount) {
@@ -48,10 +50,7 @@ public final class TeleportCharge {
         final var item = new ItemStack(mat);
         final var meta = item.getItemMeta();
         meta.displayName(Component.text(getDisplayName()).decoration(TextDecoration.ITALIC, false));
-        final var model = getCustomModelData();
-        if (model > 0) {
-            meta.setCustomModelData(model);
-        }
+        meta.setCustomModelData(MODEL_DATA); // Always use the constant value
         meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES, ItemFlag.HIDE_ENCHANTS);
         meta.getPersistentDataContainer().set(key, PersistentDataType.BYTE, (byte) 0x1);
         item.setItemMeta(meta);
@@ -72,10 +71,5 @@ public final class TeleportCharge {
     private String getDisplayName() {
         final var cfg = plugin.getConfig();
         return cfg.getString("charge.item.name", cfg.getString("teleport-charge-item.name", "Teleport Charge"));
-    }
-
-    private int getCustomModelData() {
-        final var cfg = plugin.getConfig();
-        return cfg.getInt("charge.item.model-data", cfg.getInt("teleport-charge-item.model-data", 0));
     }
 }

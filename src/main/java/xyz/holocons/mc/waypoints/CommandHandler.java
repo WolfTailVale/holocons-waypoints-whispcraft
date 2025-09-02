@@ -56,6 +56,9 @@ public class CommandHandler implements TabExecutor {
                         case "TOKENREPAIR" -> {
                             repairHeldToken(player);
                         }
+                        case "WALLET" -> {
+                            showWallet(player);
+                        }
                         default -> {
                             return false;
                         }
@@ -133,6 +136,27 @@ public class CommandHandler implements TabExecutor {
                     player.sendMessage(Component.text("Given " + amount + " waypoint token" + (amount == 1 ? "" : "s"),
                             NamedTextColor.GREEN));
                 }
+                case "GIVEWPCHARGE" -> {
+                    if (!player.hasPermission("waypoints.staff")) {
+                        player.sendMessage(Component.text("No permission.", NamedTextColor.RED));
+                        return true;
+                    }
+                    int amount = 1;
+                    if (args.length > 0) {
+                        try {
+                            amount = Integer.parseInt(args[0]);
+                        } catch (NumberFormatException ignored) {
+                        }
+                    }
+                    amount = Math.max(1, Math.min(64, amount));
+                    final var chargeItem = plugin.getTeleportCharge().createCharge(amount);
+                    final var leftover = player.getInventory().addItem(chargeItem);
+                    if (!leftover.isEmpty()) {
+                        player.getWorld().dropItemNaturally(player.getLocation(), chargeItem);
+                    }
+                    player.sendMessage(Component.text("Given " + amount + " teleport charge" + (amount == 1 ? "" : "s"),
+                            NamedTextColor.GREEN));
+                }
             }
         } else {
             if (args.length == 0) {
@@ -165,7 +189,7 @@ public class CommandHandler implements TabExecutor {
                     yield switch (args.length) {
                         case 1 -> {
                             yield List.of("create", "removetoken", "setcamp", "sethome", "teleport", "tokendebug",
-                                    "tokenrepair");
+                                    "tokenrepair", "wallet");
                         }
                         case 2 -> {
                             if (args[0].equalsIgnoreCase("teleport")) {
@@ -202,6 +226,9 @@ public class CommandHandler implements TabExecutor {
                     yield List.of();
                 }
                 case "GIVEWPTOKEN" -> {
+                    yield List.of("1", "2", "4", "8", "16", "32", "64");
+                }
+                case "GIVEWPCHARGE" -> {
                     yield List.of("1", "2", "4", "8", "16", "32", "64");
                 }
                 default -> List.of();
@@ -437,5 +464,20 @@ public class CommandHandler implements TabExecutor {
         player.sendMessage(Component.text(
                 "Registered: " + materialName + " with " + bannerDesign.getPatterns().length + " patterns",
                 NamedTextColor.YELLOW));
+    }
+
+    private void showWallet(Player player) {
+        final var traveler = travelerMap.getOrCreateTraveler(player);
+        final var charges = traveler.getCharges();
+        final var tokens = traveler.getTokens();
+        
+        player.sendMessage(Component.text("=== Your Waypoint Wallet ===", NamedTextColor.GOLD));
+        player.sendMessage(Component.text("Teleport Charges: " + charges, NamedTextColor.GREEN));
+        player.sendMessage(Component.text("Waypoint Tokens: " + tokens, NamedTextColor.BLUE));
+        player.sendMessage(Component.text("", NamedTextColor.WHITE)); // blank line
+        player.sendMessage(Component.text("• Right-click items to consume them into your wallet", NamedTextColor.GRAY));
+        player.sendMessage(Component.text("• Right-click inactive waypoints to spend tokens (1 per click)", NamedTextColor.GRAY));
+        player.sendMessage(Component.text("• Use '/waypoints removetoken' to extract your tokens back", NamedTextColor.GRAY));
+        player.sendMessage(Component.text("• Teleport charges are used for waypoint teleports (1 per teleport)", NamedTextColor.GRAY));
     }
 }
